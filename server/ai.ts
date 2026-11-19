@@ -34,24 +34,58 @@ let claude: Anthropic | null = null;
 const errorStatus = (error: unknown) => (error as { status?: number })?.status;
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 300);
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Errores pasajeros de Google (saturación, límite momentáneo, falla interna): vale la pena reintentar. */
+const isTransient = (status: number | undefined) => status === 429 || status === 500 || status === 503 || status === 504;
+
+/**
+ * Modelo principal (GEMINI_MODEL) y, si está saturado, los de respaldo (GEMINI_FALLBACK_MODELS,
+ * separados por coma). Por defecto se prueba el alias "flash" más reciente y luego "flash-lite".
+ */
+function geminiModels(): string[] {
+  const primary = process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash";
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "gemini-flash-latest,gemini-flash-lite-latest")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  return [...new Set([primary, ...fallbacks])];
+}
+
 async function withGemini(prompt: string): Promise<string> {
   gemini ??= new GoogleGenAI({
     apiKey: cleanKey(process.env.GEMINI_API_KEY),
     vertexai: process.env.GEMINI_VERTEXAI === "true",
   });
-  try {
-    const response = await gemini.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-3.6-flash",
-      contents: prompt,
-    });
-    return response.text ?? "";
-  } catch (error) {
-    const status = errorStatus(error);
-    if (status === 401 || status === 403) throw new AiError(500, `Google rechazó GEMINI_API_KEY: ${errorText(error)}`);
-    if (status === 404) throw new AiError(500, `El modelo de Gemini no está disponible para esta clave: ${errorText(error)}`);
-    if (status === 429) throw new AiError(429, "Límite de uso de Gemini alcanzado. Intentá más tarde.");
-    throw new AiError(502, `Error de la API de Gemini: ${errorText(error)}`);
+  const models = geminiModels();
+  let lastError: unknown;
+  for (const [index, model] of models.entries()) {
+    // Dos intentos por modelo, con una pausa corta entre ellos.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await gemini.models.generateContent({ model, contents: prompt });
+        return response.text ?? "";
+      } catch (error) {
+        lastError = error;
+        const status = errorStatus(error);
+        if (status === 401 || status === 403) throw new AiError(500, `Google rechazó GEMINI_API_KEY: ${errorText(error)}`);
+        // Un modelo de respaldo inexistente para esta clave no debe cortar la cadena.
+        if (status === 404) {
+          if (index === 0 && models.length === 1) {
+            throw new AiError(500, `El modelo de Gemini no está disponible para esta clave: ${errorText(error)}`);
+          }
+          break;
+        }
+        if (!isTransient(status)) throw new AiError(502, `Error de la API de Gemini: ${errorText(error)}`);
+        console.warn(`Gemini ${model} respondió ${status}; ${attempt === 0 ? "reintentando" : "probando otro modelo"}.`);
+        if (attempt === 0) await sleep(1500 + Math.random() * 1000);
+      }
+    }
   }
+  const status = errorStatus(lastError);
+  if (status === 429) throw new AiError(429, "Límite de uso de Gemini alcanzado. Intentá más tarde.");
+  if (status === 404) throw new AiError(500, `Ningún modelo de Gemini está disponible para esta clave: ${errorText(lastError)}`);
+  throw new AiError(503, "Gemini está saturado en este momento (alta demanda en Google). Probá de nuevo en unos minutos.");
 }
 
 async function withOpenAI(prompt: string): Promise<string> {
