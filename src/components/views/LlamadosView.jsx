@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import LlamadoCard from '@/components/LlamadoCard';
 import LlamadoDetailModal from '@/components/LlamadoDetailModal';
-import { Loader2, AlertCircle, RefreshCw, Search } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Search, Tag, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -11,6 +11,21 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import MultiSelectFilter from '@/components/MultiSelectFilter';
 
 const ORGANISMOS_KEY = 'comprasuy.llamados.organismos';
+const PALABRAS_KEY = 'comprasuy.llamados.palabras';
+const PAGINA = 60;
+
+// Sin tildes ni mayúsculas, para que "licitacion" encuentre "Licitación".
+const normalizar = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const textoLlamado = (l) => normalizar(`${l.titulo} ${l.organismo} ${String(l.descripcion_completa || '').replace(/<[^>]+>/g, ' ')}`);
+
+const leerLista = (key) => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+};
 
 const LlamadosView = () => {
   const { user } = useAuth();
@@ -18,22 +33,28 @@ const LlamadosView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Organismos marcados (vacío = todos). Se recuerda en este navegador.
-  const [selectedOrganismos, setSelectedOrganismos] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(ORGANISMOS_KEY) || '[]');
-      return Array.isArray(saved) ? saved : [];
-    } catch {
-      return [];
-    }
-  });
+  const [selectedOrganismos, setSelectedOrganismos] = useState(() => leerLista(ORGANISMOS_KEY));
+  // Palabras clave de Configuración → Filtros; las marcadas filtran (alcanza con que coincida una).
+  const [palabrasClave, setPalabrasClave] = useState([]);
+  const [selectedPalabras, setSelectedPalabras] = useState(() => leerLista(PALABRAS_KEY));
   useEffect(() => {
     try {
       localStorage.setItem(ORGANISMOS_KEY, JSON.stringify(selectedOrganismos));
+      localStorage.setItem(PALABRAS_KEY, JSON.stringify(selectedPalabras));
     } catch {
       /* sin almacenamiento: el filtro igual funciona */
     }
-  }, [selectedOrganismos]);
+  }, [selectedOrganismos, selectedPalabras]);
+  useEffect(() => {
+    supabase.from('palabras_clave_llamados').select('palabra').then(({ data, error }) => {
+      if (error) return console.warn('No se pudieron cargar las palabras clave:', error.message);
+      const lista = [...new Set((data || []).map((p) => String(p.palabra || '').trim()).filter(Boolean))];
+      setPalabrasClave(lista.sort((a, b) => a.localeCompare(b, 'es')));
+    });
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
+  // Se dibujan de a tandas: el feed puede traer cerca de mil llamados vigentes.
+  const [visibles, setVisibles] = useState(PAGINA);
   const [selectedLlamado, setSelectedLlamado] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -71,7 +92,7 @@ const LlamadosView = () => {
         if (functionError) {
           throw new Error(`Error al contactar el servicio RSS: ${functionError.message}`);
         }
-        
+
         if (data.error) {
           throw new Error(`Error en el feed RSS: ${data.error}`);
         }
@@ -97,9 +118,9 @@ const LlamadosView = () => {
         setIsRefreshing(false);
     }
   };
-  
+
   useEffect(() => {
-    fetchFromRss(true); 
+    fetchFromRss(true);
   }, [fetchSavedOpportunities]);
 
   const { organismosUnicos, conteoOrganismos } = useMemo(() => {
@@ -113,26 +134,49 @@ const LlamadosView = () => {
     };
   }, [llamados, selectedOrganismos]);
 
+  // Qué palabras clave aparecen en cada llamado (para el conteo, el filtro y las etiquetas).
+  const coincidencias = useMemo(() => {
+    const normalizadas = palabrasClave.map((p) => [p, normalizar(p)]);
+    const map = new Map();
+    for (const l of llamados || []) {
+      const texto = textoLlamado(l);
+      map.set(l.id, normalizadas.filter(([, n]) => texto.includes(n)).map(([p]) => p));
+    }
+    return map;
+  }, [llamados, palabrasClave]);
+
+  const conteoPalabras = useMemo(() => {
+    const conteo = {};
+    for (const lista of coincidencias.values()) for (const p of lista) conteo[p] = (conteo[p] || 0) + 1;
+    return conteo;
+  }, [coincidencias]);
+
+  const togglePalabra = (palabra) =>
+    setSelectedPalabras((prev) => (prev.includes(palabra) ? prev.filter((p) => p !== palabra) : [...prev, palabra]));
+
   const filteredLlamados = useMemo(() => {
     if (!llamados) return [];
     let result = llamados;
+
+    const activas = selectedPalabras.filter((p) => palabrasClave.includes(p));
+    if (activas.length > 0) {
+      result = result.filter((l) => (coincidencias.get(l.id) || []).some((p) => activas.includes(p)));
+    }
 
     if (selectedOrganismos.length > 0) {
       const marcados = new Set(selectedOrganismos);
       result = result.filter(l => marcados.has(l.organismo));
     }
 
-    if (searchTerm) {
-        const lowercasedTerm = searchTerm.toLowerCase();
-        result = result.filter(l => 
-            l.titulo.toLowerCase().includes(lowercasedTerm) ||
-            l.organismo.toLowerCase().includes(lowercasedTerm) ||
-            l.descripcion_completa.toLowerCase().includes(lowercasedTerm)
-        );
+    if (searchTerm.trim()) {
+        const termino = normalizar(searchTerm.trim());
+        result = result.filter(l => textoLlamado(l).includes(termino));
     }
 
     return result;
-  }, [llamados, selectedOrganismos, searchTerm]);
+  }, [llamados, selectedOrganismos, searchTerm, selectedPalabras, palabrasClave, coincidencias]);
+
+  useEffect(() => setVisibles(PAGINA), [searchTerm, selectedOrganismos, selectedPalabras]);
 
   const handleViewOriginal = (llamado) => {
     if (llamado.link) {
@@ -144,12 +188,12 @@ const LlamadosView = () => {
       });
     }
   };
-  
+
   const handleAnalyzeWithAI = (llamado) => {
     setSelectedLlamado(llamado);
     setIsModalOpen(true);
   };
-  
+
   const handleSaveToDb = async (llamado, itemsExtraidos) => {
     if (!user) {
       toast({ variant: 'destructive', title: 'Error', description: 'Debes estar logueado para guardar.' });
@@ -161,7 +205,7 @@ const LlamadosView = () => {
     try {
       const publicRecordId = llamado.id;
       const userOpportunityId = `${publicRecordId}-user-${user.id}`;
-      
+
       const userOpportunityData = {
         ...llamado,
         id: userOpportunityId,
@@ -175,7 +219,7 @@ const LlamadosView = () => {
         .upsert(userOpportunityData, { onConflict: 'id' });
 
       if (error) throw error;
-      
+
       setSavedOpportunityIds(prev => new Set(prev).add(publicRecordId));
       toast({ title: '✅ ¡Oportunidad guardada!', description: 'Puedes verla en la sección de Oportunidades.' });
 
@@ -191,13 +235,13 @@ const LlamadosView = () => {
       handleSaveToDb(selectedLlamado, items);
     }
   };
-  
+
   const renderContent = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-12 h-12 animate-spin text-orange-500" />
-          <span className="ml-4 text-slate-500">Buscando llamados en el RSS...</span>
+          <span className="ml-4 text-slate-500">Buscando llamados vigentes...</span>
         </div>
       );
     }
@@ -212,7 +256,7 @@ const LlamadosView = () => {
         </div>
       );
     }
-    
+
     if (filteredLlamados.length === 0) {
         return (
             <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
@@ -226,17 +270,25 @@ const LlamadosView = () => {
 
     return (
       <div className="space-y-4">
-        {filteredLlamados.map((llamado, index) => (
-          <LlamadoCard 
-            key={llamado.id} 
-            llamado={llamado} 
+        {filteredLlamados.slice(0, visibles).map((llamado, index) => (
+          <LlamadoCard
+            key={llamado.id}
+            llamado={llamado}
             index={index}
             isSaved={savedOpportunityIds.has(llamado.id)}
+            palabrasClave={coincidencias.get(llamado.id)}
             onViewOriginal={() => handleViewOriginal(llamado)}
             onAnalyzeWithAI={() => handleAnalyzeWithAI(llamado)}
             onSaveToDb={() => handleSaveToDb(llamado, null)}
           />
         ))}
+        {filteredLlamados.length > visibles && (
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" onClick={() => setVisibles((v) => v + PAGINA)}>
+              Mostrar más ({filteredLlamados.length - visibles} restantes)
+            </Button>
+          </div>
+        )}
       </div>
     );
   };
@@ -247,7 +299,7 @@ const LlamadosView = () => {
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
             <div className="relative w-full sm:w-1/3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <Input 
+                <Input
                     placeholder="Buscar por título, organismo o descripción..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -274,6 +326,42 @@ const LlamadosView = () => {
                 </Button>
             </div>
         </div>
+        {palabrasClave.length > 0 && (
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-sm font-semibold text-slate-600 mr-1">
+              <Tag className="h-4 w-4" /> Palabras clave:
+            </span>
+            {palabrasClave.map((palabra) => {
+              const activa = selectedPalabras.includes(palabra);
+              return (
+                <button
+                  key={palabra}
+                  type="button"
+                  onClick={() => togglePalabra(palabra)}
+                  aria-pressed={activa}
+                  className={`rounded-full border px-3 py-1 text-sm font-semibold transition-colors ${
+                    activa ? 'border-brand bg-brand text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-brand'
+                  }`}
+                >
+                  {palabra}
+                  <span className={`ml-1.5 text-xs tabular-nums ${activa ? 'text-white/80' : 'text-slate-400'}`}>{conteoPalabras[palabra] || 0}</span>
+                </button>
+              );
+            })}
+            {selectedPalabras.length > 0 && (
+              <button type="button" onClick={() => setSelectedPalabras([])} className="flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-ink">
+                <X className="h-4 w-4" /> Quitar
+              </button>
+            )}
+          </div>
+        )}
+        {!loading && !error && (
+          <p className="mb-3 text-sm text-slate-500">
+            {filteredLlamados.length === llamados.length
+              ? `${llamados.length} llamados vigentes (apertura posterior a hoy)`
+              : `${filteredLlamados.length} de ${llamados.length} llamados vigentes`}
+          </p>
+        )}
         {renderContent()}
       </motion.div>
       <LlamadoDetailModal

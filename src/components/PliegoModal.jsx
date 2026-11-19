@@ -220,7 +220,14 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
                           <tbody>
                               {itemsCalculations.length > 0 ? itemsCalculations.map((item, index) => (
                                   <tr key={index} className="hover:bg-gray-50">
-                                      <td className="p-3 border-b border-gray-200">{item.item}</td>
+                                      <td className="p-3 border-b border-gray-200">
+                                        {item.imagen ? (
+                                          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                            <img src={item.imagen} alt="" style={{ width: 90, height: 90, objectFit: 'contain', flexShrink: 0, border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff' }} />
+                                            <span>{item.item}</span>
+                                          </div>
+                                        ) : item.item}
+                                      </td>
                                       <td className="p-3 border-b border-gray-200 text-center">{item.cantidad}</td>
                                       <td className="p-3 border-b border-gray-200 text-right">{formatCurrency(item.precioUnitarioSinIva)}</td>
                                       <td className="p-3 border-b border-gray-200 text-right">{formatCurrency(item.ivaUnitario)}</td>

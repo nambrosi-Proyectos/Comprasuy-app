@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, Save, Loader2, Wand2 } from 'lucide-react';
+import { X, Plus, Trash2, Save, Loader2, Wand2, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -21,6 +21,33 @@ const modal = {
     transition: { delay: 0.1, type: 'spring', stiffness: 80, damping: 20 },
   },
 };
+
+/** Imagen del ítem: se achica (máx. 600 px) y se guarda como JPEG dentro del presupuesto. */
+const MAX_IMAGEN = 600;
+const imagenADataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) return reject(new Error('El archivo no es una imagen.'));
+    if (file.size > 10 * 1024 * 1024) return reject(new Error('La imagen supera los 10 MB.'));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('El archivo no es una imagen válida.'));
+      img.onload = () => {
+        const escala = Math.min(1, MAX_IMAGEN / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * escala);
+        canvas.height = Math.round(img.height * escala);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff'; // fondo blanco para PNG con transparencia
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 
 const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
   const [items, setItems] = useState([]);
@@ -165,6 +192,16 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
     setItems(updatedItems);
   };
 
+  const handleImagen = async (id, file) => {
+    if (!file) return;
+    try {
+      const imagen = await imagenADataUrl(file);
+      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, imagen } : item)));
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'No se pudo cargar la imagen', description: error.message });
+    }
+  };
+
   const handleRemoveItem = (id) => {
     setItems(items.filter((item) => item.id !== id));
   };
@@ -299,7 +336,27 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
 
                   return (
                     <motion.div key={item.id} layout className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4 dark:bg-slate-800/50 dark:border-slate-700">
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="shrink-0">
+                          {item.imagen ? (
+                            <div className="relative group">
+                              <img src={item.imagen} alt="Imagen del ítem" className="h-20 w-20 rounded-lg border border-slate-200 bg-white object-contain" />
+                              <div className="absolute inset-0 hidden group-hover:flex flex-col items-center justify-center gap-1 rounded-lg bg-black/55 text-[11px] font-semibold text-white">
+                                <label className="cursor-pointer hover:underline">
+                                  Cambiar
+                                  <input type="file" accept="image/*" className="hidden" onChange={e => { handleImagen(item.id, e.target.files?.[0]); e.target.value = ''; }} />
+                                </label>
+                                <button type="button" className="hover:underline" onClick={() => handleItemChange(item.id, 'imagen', null)}>Quitar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 bg-white text-[11px] font-semibold text-slate-500 hover:border-brand hover:text-brand-dark" title="Agregar imagen (se muestra en el pliego)">
+                              <ImagePlus className="h-5 w-5" />
+                              Imagen
+                              <input type="file" accept="image/*" className="hidden" onChange={e => { handleImagen(item.id, e.target.files?.[0]); e.target.value = ''; }} />
+                            </label>
+                          )}
+                        </div>
                         <textarea
                           value={item.item}
                           onChange={e => handleItemChange(item.id, 'item', e.target.value)}
@@ -329,8 +386,8 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
                             <p className="text-xs text-slate-600 dark:text-gray-400">Precio Unitario Final</p>
                             <div className="flex justify-center items-baseline gap-4">
                                 <div>
-                                    <p className="font-semibold text-slate-700 dark:text-gray-200">{formatCurrency(precioUnitarioSinIva)}</p>
-                                    <p className="text-xs text-slate-500 dark:text-gray-400">Subtotal</p>
+                                    <p className="text-2xl font-extrabold text-green-600 dark:text-green-400">{formatCurrency(precioUnitarioSinIva)}</p>
+                                    <p className="text-xs font-semibold text-green-700 dark:text-green-400">Subtotal</p>
                                 </div>
                                 <div>
                                     <p className="font-semibold text-slate-700 dark:text-gray-200">{formatCurrency(ivaUnitario)}</p>

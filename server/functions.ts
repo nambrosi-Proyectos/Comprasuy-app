@@ -39,6 +39,15 @@ const validDate = (v: string | undefined, fallback: Date) => {
   return Number.isNaN(d.getTime()) ? fallback : d;
 };
 
+/** "17/03/2027 11:00hs" (hora de Uruguay, UTC-3) → Date; null si no se entiende. */
+export function parseFechaUy(texto: string | undefined): Date | null {
+  const m = texto?.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const [, d, mo, y, h = "23", mi = "59"] = m;
+  const date = new Date(Date.UTC(+y, +mo - 1, +d, +h + 3, +mi));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 async function rssEntries(kind: "llamados" | "adjudicaciones" | "todos", limit: number) {
   const { items, lastBuildDate } = await loadRss();
   const entries = items
@@ -63,6 +72,7 @@ async function rssEntries(kind: "llamados" | "adjudicaciones" | "todos", limit: 
         link: text(item.link),
         organismo: organismo || "No especificado",
         fecha_cierre_texto: kind === "adjudicaciones" ? "N/A" : cierre || "No especificada",
+        fecha_cierre: parseFechaUy(cierre)?.toISOString() ?? null,
         descripcion_completa: description,
         fecha_publicacion: pubDate.toISOString(),
         fecha_modificacion: modDate.toISOString(),
@@ -74,8 +84,11 @@ async function rssEntries(kind: "llamados" | "adjudicaciones" | "todos", limit: 
       return entry;
     })
     .filter(Boolean) as Record<string, any>[];
-  entries.sort((a, b) => new Date(b.fecha_publicacion).getTime() - new Date(a.fecha_publicacion).getTime());
-  return entries.slice(0, limit);
+  // Llamados: solo los vigentes (apertura posterior a ahora). Los que no traen fecha se dejan.
+  const vigentes =
+    kind === "llamados" ? entries.filter((e) => !e.fecha_cierre || new Date(e.fecha_cierre).getTime() >= Date.now()) : entries;
+  vigentes.sort((a, b) => new Date(b.fecha_publicacion).getTime() - new Date(a.fecha_publicacion).getTime());
+  return vigentes.slice(0, limit);
 }
 
 /** Igual que las funciones originales: los errores del feed vuelven como { error }. */
@@ -278,7 +291,8 @@ const analyzeExcelImport: Fn = async ({ fileContentJson }) => {
 };
 
 const FUNCTIONS: Record<string, Fn> = {
-  "fetch-llamados-rss": rssFunction("llamados", "llamados", 150),
+  // Todos los vigentes del feed, sin tope.
+  "fetch-llamados-rss": rssFunction("llamados", "llamados", Infinity),
   "fetch-adjudicaciones-rss": rssFunction("adjudicaciones", "adjudicaciones", 150),
   "fetch-rss": rssFunction("todos", "llamados", 300),
   "analyze-llamado": analyzeLlamado,
