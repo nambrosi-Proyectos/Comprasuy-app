@@ -4,55 +4,40 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle } from 'lucide-react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 
-const StatCard = ({
-  icon,
-  title,
-  value,
-  color,
-  loading
-}) => {
-  const Icon = icon;
-  return <motion.div initial={{
-    opacity: 0,
-    y: 20
-  }} animate={{
-    opacity: 1,
-    y: 0
-  }} transition={{
-    duration: 0.5
-  }} className={`p-6 rounded-2xl shadow-lg flex items-center gap-6 bg-gradient-to-br ${color}`}>
-      <div className="p-4 bg-white/20 rounded-xl">
-        <Icon className="w-8 h-8 text-white" />
-      </div>
-      <div>
-        <p className="text-white/80 text-sm">{title}</p>
-        {loading ? <Loader2 className="w-6 h-6 animate-spin text-white mt-1" /> : <p className="text-3xl font-bold text-white">{value}</p>}
-      </div>
-    </motion.div>;
-};
-const NavButton = ({
-  to,
-  icon,
-  label,
-  color
-}) => {
-  const Icon = icon;
-  return <motion.div whileHover={{
-    scale: 1.05
-  }} whileTap={{
-    scale: 0.95
-  }}>
-      <Button asChild size="lg" className={`w-full h-24 text-lg justify-start p-6 ${color}`}>
-        <Link to={to}>
-          <Icon className="w-8 h-8 mr-4" />
-          {label}
-        </Link>
-      </Button>
-    </motion.div>;
-};
+const StatCard = ({ icon: Icon, title, value, accent, loading }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 12 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.35 }}
+    className={`rounded-xl border p-[18px] flex items-start justify-between ${accent ? 'bg-ink border-ink text-white' : 'bg-white border-slate-200'}`}
+  >
+    <div>
+      <span className={`text-[13px] font-semibold ${accent ? 'text-slate-400' : 'text-slate-500'}`}>{title}</span>
+      {loading ? (
+        <Loader2 className="w-6 h-6 animate-spin text-brand mt-2" />
+      ) : (
+        <b className={`block text-[25px] mt-1 ${accent ? 'text-brand' : 'text-ink'}`}>{value}</b>
+      )}
+    </div>
+    <Icon className={`w-6 h-6 ${accent ? 'text-brand' : 'text-slate-400'}`} />
+  </motion.div>
+);
+
+const NavButton = ({ to, icon: Icon, label, desc }) => (
+  <Link
+    to={to}
+    className="group bg-white border border-slate-200 rounded-xl p-[18px] flex items-center gap-4 hover:border-brand transition-colors"
+  >
+    <span className="w-11 h-11 rounded-[10px] bg-brand-light text-brand flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-colors">
+      <Icon className="w-5 h-5" />
+    </span>
+    <span>
+      <b className="block text-ink">{label}</b>
+      <span className="text-[13px] text-slate-500">{desc}</span>
+    </span>
+  </Link>
+);
 const DashboardView = () => {
   const [stats, setStats] = useState({
     presentaciones: 0,
@@ -89,40 +74,31 @@ const DashboardView = () => {
     fetchStats();
   }, []);
 
-  return <div className="min-h-screen bg-slate-100 text-slate-900">
-      <div className="container mx-auto px-4 py-8">
-        <Header />
-        <main className="mt-8">
-          <motion.div initial={{
-          opacity: 0
-        }} animate={{
-          opacity: 1
-        }} transition={{
-          duration: 0.5
-        }}>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                <h1 className="text-3xl font-bold text-slate-800">Incio</h1>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              <StatCard icon={CheckCircle} title="Presentaciones" value={stats.presentaciones} color="from-green-500 to-green-600" loading={loadingStats} />
-              <StatCard icon={Package} title="Productos" value={stats.productos} color="from-blue-500 to-blue-600" loading={loadingStats} />
-              <StatCard icon={Users} title="Clientes" value={stats.clientes} color="from-violet-500 to-violet-600" loading={loadingStats} />
-            </div>
-
-            <h2 className="text-2xl font-bold text-slate-700 mb-6">Accesos Rápidos</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <NavButton to="/app/llamados" icon={FileText} label="Llamados" color="bg-sky-500 hover:bg-sky-600" />
-              <NavButton to="/app/oportunidades" icon={Star} label="Oportunidades" color="bg-amber-500 hover:bg-amber-600" />
-              <NavButton to="/app/adjudicaciones" icon={Award} label="Adjudicaciones" color="bg-teal-500 hover:bg-teal-600" />
-              <NavButton to="/app/presupuestos" icon={FileSignature} label="Presupuestos" color="bg-indigo-500 hover:bg-indigo-600" />
-              <NavButton to="/app/lista_precios" icon={List} label="Lista de Precios" color="bg-rose-500 hover:bg-rose-600" />
-              <NavButton to="/app/configuracion" icon={Settings} label="Configuración" color="bg-slate-500 hover:bg-slate-600" />
-            </div>
-          </motion.div>
-        </main>
-        <Footer />
+  return (
+    <div>
+      <div className="flex justify-between items-center gap-3.5 flex-wrap mb-5">
+        <h1 className="m-0 text-[26px] font-extrabold">Panel</h1>
+        <Button asChild>
+          <Link to="/app/llamados"><FileText className="w-4 h-4" /> Ver llamados</Link>
+        </Button>
       </div>
-    </div>;
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <StatCard icon={CheckCircle} title="Presentaciones" value={stats.presentaciones} accent loading={loadingStats} />
+        <StatCard icon={Package} title="Productos" value={stats.productos} loading={loadingStats} />
+        <StatCard icon={Users} title="Clientes" value={stats.clientes} loading={loadingStats} />
+      </div>
+
+      <h2 className="text-base font-bold text-ink mb-3">Accesos rápidos</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <NavButton to="/app/llamados" icon={FileText} label="Llamados" desc="Lo último publicado en Compras Estatales" />
+        <NavButton to="/app/oportunidades" icon={Star} label="Oportunidades" desc="Llamados guardados para cotizar" />
+        <NavButton to="/app/adjudicaciones" icon={Award} label="Adjudicaciones" desc="Resultados y precios adjudicados" />
+        <NavButton to="/app/presupuestos" icon={FileSignature} label="Presupuestos" desc="Presupuestos a clientes" />
+        <NavButton to="/app/lista_precios" icon={List} label="Lista de Precios" desc="Productos y precios por cliente" />
+        <NavButton to="/app/configuracion" icon={Settings} label="Configuración" desc="Empresa, usuarios, filtros y prompts" />
+      </div>
+    </div>
+  );
 };
 export default DashboardView;

@@ -19,7 +19,6 @@ const LoginView = () => {
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const logoUrl = 'https://comprasuy.com/wp-content/uploads/2022/08/Diseno-sin-titulo-6.png';
 
   const goToLogin = () => {
     if (window.location.pathname === '/reset-password') window.history.replaceState({}, '', '/');
@@ -76,17 +75,17 @@ const LoginView = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-ink p-5">
       <Helmet><title>Acceso y recuperación de contraseña - Comprasuy</title><meta name="description" content="Accede a Comprasuy o recupera tu contraseña mediante un enlace seguro enviado a tu correo." /></Helmet>
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-slate-200"
+        className="w-full max-w-[380px] bg-white p-[30px] rounded-2xl"
       >
-        <div className="text-center mb-8">
-          <img src={logoUrl} alt="Comprasuy Logo" className="h-16 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-slate-800">{mode === 'login' ? 'Bienvenido a Comprasuy' : mode === 'forgot' ? 'Recuperar contraseña' : 'Nueva contraseña'}</h1>
+        <div className="text-center mb-7">
+          <img src="/logo-comprasuy.webp" alt="Comprasuy" className="h-12 mx-auto mb-5" />
+          <h1 className="text-[26px] leading-tight font-extrabold text-ink mb-1">{mode === 'login' ? 'Bienvenido a Comprasuy' : mode === 'forgot' ? 'Recuperar contraseña' : 'Nueva contraseña'}</h1>
           <p className="text-slate-500">{mode === 'login' ? 'Inicia sesión para acceder al portal' : mode === 'forgot' ? 'Te enviaremos un enlace seguro a tu correo.' : 'Elige una contraseña de al menos 8 caracteres.'}</p>
         </div>
 
@@ -132,12 +131,12 @@ const LoginView = () => {
             </div>
           </div>}
           {mode === 'reset' && <div className="space-y-2"><Label htmlFor="confirmation">Confirmar contraseña</Label><Input id="confirmation" type="password" autoComplete="new-password" minLength={8} required value={confirmation} onChange={e => setConfirmation(e.target.value)} /></div>}
-          <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white" disabled={loading || (mode === 'forgot' && !mailConfigured)}>
+          <Button type="submit" className="w-full h-12 text-base" disabled={loading || (mode === 'forgot' && !mailConfigured)}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {loading ? 'Procesando...' : mode === 'login' ? 'Ingresar' : mode === 'forgot' ? 'Enviar enlace de recuperación' : 'Guardar nueva contraseña'}
           </Button>
         </form>
-        <button type="button" disabled={loading} className="mt-5 min-h-[44px] w-full text-sm font-medium text-orange-700 hover:underline" onClick={toggleMode}>
+        <button type="button" disabled={loading} className="mt-4 min-h-[44px] w-full text-sm font-semibold text-brand-dark hover:underline" onClick={toggleMode}>
           {mode === 'login' ? '¿Olvidaste tu contraseña?' : 'Volver al inicio de sesión'}
         </button>
       </motion.div>

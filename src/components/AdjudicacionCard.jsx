@@ -69,7 +69,7 @@ const AdjudicacionCard = ({ adjudicacion, index, onSaveToDb, onViewOriginal, onF
             <Database className="w-4 h-4 mr-2" />
             Guardar Adjudicación
           </Button>
-          <Button onClick={() => onViewOriginal(adjudicacion)} variant="secondary" className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button onClick={() => onViewOriginal(adjudicacion)} variant="secondary">
             <ExternalLink className="w-4 h-4 mr-2" />
             Ver Original
           </Button>

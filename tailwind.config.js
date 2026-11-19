@@ -1,4 +1,35 @@
 /** @type {import('tailwindcss').Config} */
+
+// Estética de la marca (igual que SVC, svc.comprasuy.com): naranja #ff7a1a, grises
+// neutros (sin el tinte azul de "slate") y Figtree. Las pantallas heredadas usan clases
+// slate/orange/blue/purple; redefinir esas paletas las alinea a la marca sin reescribirlas.
+const brandOrange = {
+	50: '#fff7f0',
+	100: '#fff1e6',
+	200: '#ffd9bd',
+	300: '#ffbb8a',
+	400: '#ff9a52',
+	500: '#ff7a1a',
+	600: '#e5620a',
+	700: '#c04f06',
+	800: '#993f08',
+	900: '#7a340a',
+	950: '#431a03',
+};
+const neutral = {
+	50: '#fafafa',
+	100: '#f6f6f6',
+	200: '#ececec',
+	300: '#dcdcdc',
+	400: '#999999',
+	500: '#666666',
+	600: '#555555',
+	700: '#444444',
+	800: '#2e2e2e',
+	900: '#1c1c1c',
+	950: '#121212',
+};
+
 module.exports = {
 	darkMode: ['class'],
 	content: [
@@ -16,7 +47,21 @@ module.exports = {
 			},
 		},
 		extend: {
+			fontFamily: {
+				sans: ['Figtree', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Arial', 'sans-serif'],
+			},
 			colors: {
+				brand: { DEFAULT: '#ff7a1a', dark: '#e5620a', light: '#fff1e6' },
+				ink: '#1c1c1c',
+				orange: brandOrange,
+				amber: brandOrange,
+				purple: brandOrange,
+				violet: brandOrange,
+				indigo: brandOrange,
+				slate: neutral,
+				gray: neutral,
+				blue: neutral,
+				sky: neutral,
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -52,6 +97,8 @@ module.exports = {
 				},
 			},
 			borderRadius: {
+				xl: '14px',
+				'2xl': '18px',
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)',

@@ -168,7 +168,7 @@ const LlamadoDetailModal = ({ isOpen, onClose, llamado, onViewOriginal, onItemsE
             <AiAnalysisView llamado={llamado} onItemsExtracted={onItemsExtracted} />
 
             <div className="mt-8 flex justify-end">
-              <Button onClick={() => onViewOriginal(llamado)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+              <Button onClick={() => onViewOriginal(llamado)}>
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Ir a la Fuente Original
               </Button>

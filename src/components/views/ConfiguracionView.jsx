@@ -63,7 +63,7 @@ const ConfiguracionView = () => {
   
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-      <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Configuración General</h1>
+      <h1 className="text-[26px] font-extrabold text-ink">Configuración General</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <motion.div variants={sectionVariants} initial="hidden" animate="visible">

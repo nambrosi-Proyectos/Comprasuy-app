@@ -171,7 +171,7 @@ const PreciosLicitadosView = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Historial de Precios Licitados</h1>
+      <h1 className="text-[26px] font-extrabold text-ink">Historial de Precios Licitados</h1>
       <div className="bg-white dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <Input
           type="text"

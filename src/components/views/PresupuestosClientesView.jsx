@@ -276,7 +276,7 @@ const PresupuestosClientesView = () => {
         config={pliegoConfig}
       />
 
-      <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Lista de Precios para Instituciones y Clientes</h1>
+      <h1 className="text-[26px] font-extrabold text-ink">Lista de Precios para Instituciones y Clientes</h1>
       
       {importing && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">

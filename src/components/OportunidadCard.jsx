@@ -93,7 +93,7 @@ const OportunidadCard = ({
           <Award className="w-4 h-4 mr-2" />
           {llamado.adjudicado ? 'Adjudicado' : 'Marcar Adjudicado'}
         </Button>
-        <Button onClick={onOpenAnalisisIA} variant="default" size="sm" className="bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90 transition-opacity">
+        <Button onClick={onOpenAnalisisIA} variant="default" size="sm">
           <Sparkles className="w-4 h-4 mr-2" />
           Analizar con IA
         </Button>

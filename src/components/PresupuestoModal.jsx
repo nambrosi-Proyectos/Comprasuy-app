@@ -275,7 +275,7 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
                     <Button variant="outline" className="w-full sm:w-auto flex-grow border-dashed border-green-500/50 text-green-600 hover:bg-green-50 dark:text-green-300" onClick={handleAddItem}>
                         <Plus className="w-4 h-4 mr-2" /> Añadir Ítem Manualmente
                     </Button>
-                    <Button onClick={extractItemsWithAI} className="w-full sm:w-auto flex-grow bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                    <Button onClick={extractItemsWithAI} className="w-full sm:w-auto flex-grow">
                         <Wand2 className="w-4 h-4 mr-2" /> Cargar Ítems del Llamado
                     </Button>
                 </div>

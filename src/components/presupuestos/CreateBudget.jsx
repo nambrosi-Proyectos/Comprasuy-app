@@ -52,7 +52,7 @@ const CreateBudget = ({
           <Button 
             onClick={handleAnalyzeBudget} 
             disabled={!selectedCliente || !plainTextBudget.trim() || isAnalyzingBudget}
-            className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white"
+            className=""
             size="icon"
           >
             {isAnalyzingBudget ? <Loader2 className="animate-spin" /> : <Wand2 />}

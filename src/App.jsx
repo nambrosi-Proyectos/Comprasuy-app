@@ -20,8 +20,8 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <Loader2 className="w-12 h-12 animate-spin text-orange-500" />
+      <div className="min-h-screen flex items-center justify-center bg-ink p-4">
+        <Loader2 className="w-12 h-12 animate-spin text-brand" />
       </div>
     );
   }
@@ -33,23 +33,23 @@ const AppContent = () => {
   return (
     <>
       <Helmet>
-        <title>Sistema de Gestión - Compras Estatales</title>
+        <title>Comprasuy · Compras Estatales</title>
         <meta name="description" content="Monitorea llamados y adjudicaciones del Estado uruguayo en tiempo real. Encuentra oportunidades de negocio y mantente actualizado con las compras públicas." />
         <meta property="og:title" content="Sistema de Gestión - Compras Estatales" />
         <meta property="og:description" content="Monitorea llamados y adjudicaciones del Estado uruguayo en tiempo real." />
       </Helmet>
       
       <Routes>
-        <Route path="/" element={<DashboardView />} />
-        <Route path="/app" element={<MainLayout />}>
-          <Route index element={<LlamadosView />} />
-          <Route path="llamados" element={<LlamadosView />} />
-          <Route path="oportunidades" element={<OportunidadesView />} />
-          <Route path="precios_licitados" element={<PreciosLicitadosView />} />
-          <Route path="lista_precios" element={<ListaPreciosView />} />
-          <Route path="presupuestos" element={<PresupuestosClientesView />} />
-          <Route path="adjudicaciones" element={<AdjudicacionesView />} />
-          <Route path="configuracion" element={<ConfiguracionView />} />
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<DashboardView />} />
+          <Route path="/app" element={<LlamadosView />} />
+          <Route path="/app/llamados" element={<LlamadosView />} />
+          <Route path="/app/oportunidades" element={<OportunidadesView />} />
+          <Route path="/app/precios_licitados" element={<PreciosLicitadosView />} />
+          <Route path="/app/lista_precios" element={<ListaPreciosView />} />
+          <Route path="/app/presupuestos" element={<PresupuestosClientesView />} />
+          <Route path="/app/adjudicaciones" element={<AdjudicacionesView />} />
+          <Route path="/app/configuracion" element={<ConfiguracionView />} />
         </Route>
       </Routes>
       <Toaster />
