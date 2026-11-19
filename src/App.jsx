@@ -1,0 +1,68 @@
+import React from 'react';
+import { Helmet } from 'react-helmet';
+import { Toaster } from '@/components/ui/toaster';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import LoginView from '@/components/views/LoginView';
+import DashboardView from '@/components/views/DashboardView';
+import MainLayout from '@/components/MainLayout';
+import LlamadosView from '@/components/views/LlamadosView';
+import OportunidadesView from '@/components/views/OportunidadesView';
+import PreciosLicitadosView from '@/components/views/PreciosLicitadosView';
+import ListaPreciosView from '@/components/views/ListaPreciosView';
+import PresupuestosClientesView from '@/components/views/PresupuestosClientesView';
+import AdjudicacionesView from '@/components/views/AdjudicacionesView';
+import ConfiguracionView from '@/components/views/ConfiguracionView';
+import { Loader2 } from 'lucide-react';
+
+const AppContent = () => {
+  const { user, loading, passwordRecovery } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <Loader2 className="w-12 h-12 animate-spin text-orange-500" />
+      </div>
+    );
+  }
+
+  if (!user || passwordRecovery || window.location.pathname === '/reset-password' || window.location.hash.includes('type=recovery')) {
+    return <LoginView />;
+  }
+
+  return (
+    <>
+      <Helmet>
+        <title>Sistema de Gestión - Compras Estatales</title>
+        <meta name="description" content="Monitorea llamados y adjudicaciones del Estado uruguayo en tiempo real. Encuentra oportunidades de negocio y mantente actualizado con las compras públicas." />
+        <meta property="og:title" content="Sistema de Gestión - Compras Estatales" />
+        <meta property="og:description" content="Monitorea llamados y adjudicaciones del Estado uruguayo en tiempo real." />
+      </Helmet>
+      
+      <Routes>
+        <Route path="/" element={<DashboardView />} />
+        <Route path="/app" element={<MainLayout />}>
+          <Route index element={<LlamadosView />} />
+          <Route path="llamados" element={<LlamadosView />} />
+          <Route path="oportunidades" element={<OportunidadesView />} />
+          <Route path="precios_licitados" element={<PreciosLicitadosView />} />
+          <Route path="lista_precios" element={<ListaPreciosView />} />
+          <Route path="presupuestos" element={<PresupuestosClientesView />} />
+          <Route path="adjudicaciones" element={<AdjudicacionesView />} />
+          <Route path="configuracion" element={<ConfiguracionView />} />
+        </Route>
+      </Routes>
+      <Toaster />
+    </>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+        <AppContent />
+    </Router>
+  );
+}
+
+export default App;
