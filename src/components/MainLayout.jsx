@@ -34,8 +34,15 @@ const MainLayout = () => {
   return (
     <div className="min-h-screen bg-slate-100 text-ink grid grid-cols-[232px_1fr] max-[860px]:grid-cols-1">
       <aside className="bg-ink text-white sticky top-0 h-screen h-[100dvh] overflow-y-auto flex flex-col gap-1 px-3.5 py-[18px] max-[860px]:z-30 max-[860px]:h-auto max-[860px]:flex-row max-[860px]:items-center max-[860px]:overflow-x-auto max-[860px]:p-2">
-        <NavLink to="/" className="flex flex-col gap-1 px-2 pt-1 pb-[18px] shrink-0 max-[860px]:p-0 max-[860px]:pr-2">
-          <img src="/logo-comprasuy.webp" alt="Comprasuy" className="h-8 w-auto max-[860px]:h-6" />
+        <NavLink to="/" className="flex flex-col items-start gap-1 px-2 pt-1 pb-[18px] shrink-0 max-[860px]:p-0 max-[860px]:pr-2">
+          {/* 1000×250 px: ancho y alto fijos en esa proporción para que nunca se deforme. */}
+          <img
+            src="/logo-comprasuy.webp"
+            alt="Comprasuy"
+            width={1000}
+            height={250}
+            className="block h-9 w-36 max-w-none object-contain object-left max-[860px]:h-6 max-[860px]:w-24"
+          />
           <small className="text-[11.5px] font-semibold text-slate-400 max-[860px]:hidden">Compras Estatales</small>
         </NavLink>
 

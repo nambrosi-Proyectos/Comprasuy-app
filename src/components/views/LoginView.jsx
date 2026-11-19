@@ -84,7 +84,7 @@ const LoginView = () => {
         className="w-full max-w-[380px] bg-white p-[30px] rounded-2xl"
       >
         <div className="text-center mb-7">
-          <img src="/logo-comprasuy.webp" alt="Comprasuy" className="h-12 mx-auto mb-5" />
+          <img src="/logo-comprasuy.webp" alt="Comprasuy" width={1000} height={250} className="block h-12 w-48 max-w-full object-contain mx-auto mb-5" />
           <h1 className="text-[26px] leading-tight font-extrabold text-ink mb-1">{mode === 'login' ? 'Bienvenido a Comprasuy' : mode === 'forgot' ? 'Recuperar contraseña' : 'Nueva contraseña'}</h1>
           <p className="text-slate-500">{mode === 'login' ? 'Inicia sesión para acceder al portal' : mode === 'forgot' ? 'Te enviaremos un enlace seguro a tu correo.' : 'Elige una contraseña de al menos 8 caracteres.'}</p>
         </div>

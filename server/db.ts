@@ -195,6 +195,7 @@ const SCHEMA = [
     email VARCHAR(191) NULL,
     telefono VARCHAR(100) NULL,
     footer_texto TEXT NULL,
+    firma_imagen MEDIUMTEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ${TABLE_OPTIONS}`,
   `CREATE TABLE IF NOT EXISTS palabras_clave_llamados (
@@ -217,7 +218,27 @@ const SCHEMA = [
   ) ${TABLE_OPTIONS}`,
 ];
 
+/** Columnas agregadas después de la primera versión: se suman a las bases ya creadas. */
+const ADDED_COLUMNS: { table: string; column: string; definition: string }[] = [
+  // Imagen de la firma (data URL) que va al pie del pliego.
+  { table: "pliego_config", column: "firma_imagen", definition: "MEDIUMTEXT NULL" },
+];
+
 export async function initSchema(): Promise<void> {
   const db = getPool();
   for (const statement of SCHEMA) await db.query(statement);
+  for (const { table, column, definition } of ADDED_COLUMNS) {
+    const [rows] = await db.query<any[]>(
+      "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+      [table, column],
+    );
+    if (rows.length) continue;
+    try {
+      await db.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+      console.log(`Columna agregada: ${table}.${column}`);
+    } catch (error) {
+      // Otro proceso pudo agregarla al mismo tiempo (Hostinger arranca varios).
+      if ((error as { code?: string })?.code !== "ER_DUP_FIELDNAME") throw error;
+    }
+  }
 }

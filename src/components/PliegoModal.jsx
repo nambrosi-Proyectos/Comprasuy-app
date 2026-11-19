@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { htmlToText } from 'html-to-text';
+import { supabase } from '@/lib/customSupabaseClient';
 
 const backdrop = {
   visible: { opacity: 1 },
@@ -26,6 +27,16 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
   const pliegoRef = useRef(null);
+  // Datos de la empresa y firma (Configuración → Datos de la empresa).
+  const [empresa, setEmpresa] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    supabase.from('pliego_config').select('*').limit(1).maybeSingle().then(({ data, error }) => {
+      if (error) console.warn('No se pudieron cargar los datos de la empresa:', error.message);
+      setEmpresa(data || {});
+    });
+  }, [isOpen]);
 
   const handleCopyToWord = () => {
     if (!pliegoRef.current) return;
@@ -173,9 +184,11 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
               <header className="flex justify-between items-start pb-8 mb-8 border-b-2 border-gray-200">
                 <div className="flex items-center">
                   <div>
-                    <h1 className="text-2xl font-bold text-orange-500">Compras.uy</h1>
-                    <p>RUT: 215276350015</p>
-                    <p>Email: Compras@comprasuy.com</p>
+                    <h1 className="text-2xl font-bold text-orange-500">{empresa?.razon_social || 'Compras.uy'}</h1>
+                    <p>RUT: {empresa?.rut || '215276350015'}</p>
+                    <p>Email: {empresa?.email || 'Compras@comprasuy.com'}</p>
+                    {empresa?.telefono && <p>Tel.: {empresa.telefono}</p>}
+                    {empresa?.direccion && <p>{empresa.direccion}</p>}
                   </div>
                 </div>
                 <div className="text-right">
@@ -244,6 +257,14 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
 
               <footer className="mt-16 text-left text-gray-600 text-sm">
                 <p>Sin más, les agradecemos y quedamos a las órdenes!!,</p>
+                {empresa?.firma_imagen && (
+                  <div className="mt-6">
+                    <img src={empresa.firma_imagen} alt="Firma" style={{ maxHeight: 110, maxWidth: 260, objectFit: 'contain' }} />
+                    <div style={{ borderTop: '1px solid #9ca3af', width: 260, marginTop: 4, paddingTop: 4 }} className="text-gray-700">
+                      {empresa.razon_social || 'Compras.uy'}
+                    </div>
+                  </div>
+                )}
               </footer>
             </div>
           </div>
