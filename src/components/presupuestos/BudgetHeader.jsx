@@ -51,7 +51,7 @@ const ClientCombobox = ({ clientes, selectedCliente, onClientChange, disabled })
                             {clientes.map((cliente) => (
                                 <CommandItem
                                     key={cliente.id}
-                                    value={cliente.name}
+                                    value={`${cliente.name} ${cliente.cuit || ''} ${cliente.id}`}
                                     onSelect={() => {
                                         onClientChange(cliente.id)
                                         setValue(cliente.id)
@@ -64,7 +64,8 @@ const ClientCombobox = ({ clientes, selectedCliente, onClientChange, disabled })
                                             value === cliente.id ? "opacity-100" : "opacity-0"
                                         )}
                                     />
-                                    {cliente.name}
+                                    <span className="flex-1">{cliente.name}</span>
+                                    {cliente.cuit && <span className="ml-2 text-xs text-slate-400 tabular-nums">RUT {cliente.cuit}</span>}
                                 </CommandItem>
                             ))}
                         </CommandGroup>

@@ -16,6 +16,7 @@ import BudgetHeader from '@/components/presupuestos/BudgetHeader';
 import CreateBudget from '@/components/presupuestos/CreateBudget';
 import BudgetItemList from '@/components/presupuestos/BudgetItemList';
 import BudgetTotals from '@/components/presupuestos/BudgetTotals';
+import PreciosClienteTable from '@/components/presupuestos/PreciosClienteTable';
 
 const PresupuestosClientesView = () => {
   const { toast } = useToast();
@@ -94,6 +95,7 @@ const PresupuestosClientesView = () => {
             precio_unitario,
             iva,
             moneda,
+            fecha_ultima_venta,
             productos_base (id, nombre, codigo)
         `)
         .eq('cliente_id', clienteId);
@@ -110,8 +112,9 @@ const PresupuestosClientesView = () => {
         codigo: pc.productos_base.codigo,
         precio_unitario: pc.precio_unitario,
         iva: pc.iva,
-        moneda: pc.moneda
-    }));
+        moneda: pc.moneda,
+        fecha_ultima_venta: pc.fecha_ultima_venta
+    })).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
 
     if(productosMapeados.length > 0) {
       setBudgetMoneda(productosMapeados[0].moneda || 'UYU')
@@ -302,6 +305,13 @@ const PresupuestosClientesView = () => {
         handleFileChange={handleFileChange}
         importing={importing}
       />
+
+      {selectedCliente && (
+        <PreciosClienteTable
+          cliente={clientes.find((c) => c.id === selectedCliente)}
+          productos={productosCliente}
+        />
+      )}
 
       <div className="bg-white dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
         <div className="flex justify-between items-center">

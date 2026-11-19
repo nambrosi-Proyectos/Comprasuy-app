@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import * as XLSX from 'xlsx';
+import { esDiarioDeVentas, leerDiarioDeVentas } from '@/lib/diarioVentas';
 
 export const useExcelImport = (onComplete) => {
   const { toast } = useToast();
@@ -154,7 +155,14 @@ export const useExcelImport = (onComplete) => {
       setImportProgress(10);
       
       let rowsToProcess;
-      if (useIA) {
+      let resumen = '';
+      if (esDiarioDeVentas(json)) {
+        // Diario de ventas: se lee directo, sin IA (una fila por cliente + producto, precio más reciente).
+        setCurrentStep('Leyendo diario de ventas...');
+        const { filas, ventas, clientes } = leerDiarioDeVentas(json);
+        rowsToProcess = filas;
+        resumen = `${clientes} clientes con RUT y ${filas.length} precios (de ${ventas} líneas de venta).`;
+      } else if (useIA) {
         rowsToProcess = await analyzeAndImport(json);
       } else {
         rowsToProcess = fastImport(json);
@@ -171,7 +179,7 @@ export const useExcelImport = (onComplete) => {
       
       setCurrentStep('Completado');
       setImportProgress(100);
-      toast({ title: '✅ ¡Importación completada!', description: `${rowsToProcess.length} precios han sido procesados en ${elapsedTime} segundos.` });
+      toast({ title: '✅ ¡Importación completada!', description: resumen || `${rowsToProcess.length} precios han sido procesados.` });
       if (onComplete) onComplete();
 
     } catch (error) {
