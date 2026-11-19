@@ -218,7 +218,13 @@ export async function ensureInitialAdmin(): Promise<void> {
     await getPool().query("UPDATE users SET role = 'admin' WHERE id = ?", [existing.id]);
     await setPassword(existing.id, password);
   } else {
-    await createUser({ email, name: process.env.INITIAL_ADMIN_NAME || "Administrador", role: "admin", password });
+    try {
+      await createUser({ email, name: process.env.INITIAL_ADMIN_NAME || "Administrador", role: "admin", password });
+    } catch (error) {
+      // Hostinger arranca varios procesos a la vez: si otro ya lo creó, no es un error.
+      if ((error as { code?: string })?.code === "ER_DUP_ENTRY") return;
+      throw error;
+    }
   }
   console.log(`Administrador inicial creado: ${email}`);
 }

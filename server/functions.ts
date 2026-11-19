@@ -10,6 +10,7 @@ import { HttpError, wrap, apiErrorHandler } from "./http";
 import { generateText, extractJson, aiProvider, AiError } from "./ai";
 import { renderPrompt } from "./prompts";
 import { querySql } from "./rest";
+import { getPool } from "./db";
 
 type Fn = (body: any, user: User) => Promise<unknown>;
 
@@ -230,18 +231,27 @@ const FUNCTIONS: Record<string, Fn> = {
 
 // ---------- Ejecución con espera corta + consulta ----------
 
-type Job = { userId: string; createdAt: number; status: "pending" | "done" | "error"; data?: unknown; error?: string; code?: number };
-const jobs = new Map<string, Job>();
-const WAIT_MS = 20 * 1000;
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, job] of jobs) if (now - job.createdAt > 15 * 60 * 1000) jobs.delete(id);
-}, 60 * 1000).unref();
+// El estado de cada pedido se guarda en la tabla function_jobs (no en memoria): Hostinger
+// corre varios procesos de la app y la consulta del navegador puede caer en otro proceso.
+type JobStatus = "pending" | "done" | "error";
+type Job = { status: JobStatus; data?: unknown; error?: string; code?: number };
+const WAIT_MS = Number(process.env.FUNCTION_WAIT_MS) || 20 * 1000;
+/** Un pedido "pending" más viejo que esto se da por perdido (el proceso que lo corría se cerró). */
+const STALE_MS = 12 * 60 * 1000;
 
 function finishedResponse(job: Job) {
   if (job.status === "error") return { status: job.code || 500, body: { status: "error", error: { message: job.error } } };
   return { status: 200, body: { status: "done", data: job.data ?? null } };
+}
+
+async function saveJob(id: string, job: Job) {
+  await getPool().query("UPDATE function_jobs SET status = ?, data = ?, error = ?, code = ? WHERE id = ?", [
+    job.status,
+    job.status === "done" ? JSON.stringify(job.data ?? null) : null,
+    job.error ?? null,
+    job.code ?? null,
+    id,
+  ]);
 }
 
 export function functionsRouter() {
@@ -251,9 +261,15 @@ export function functionsRouter() {
   router.post("/:name", wrap(async (req: AuthedRequest, res) => {
     const fn = Object.hasOwn(FUNCTIONS, req.params.name) ? FUNCTIONS[req.params.name] : undefined;
     if (!fn) throw new HttpError(404, `Función desconocida: ${req.params.name}`);
+    const db = getPool();
     const id = randomUUID();
-    const job: Job = { userId: req.user!.id, createdAt: Date.now(), status: "pending" };
-    jobs.set(id, job);
+    // Limpieza de pedidos viejos, de paso.
+    await db.query("DELETE FROM function_jobs WHERE created_at < UTC_TIMESTAMP() - INTERVAL 1 HOUR");
+    await db.query("INSERT INTO function_jobs (id, user_id, status, created_at) VALUES (?, ?, 'pending', UTC_TIMESTAMP())", [
+      id,
+      req.user!.id,
+    ]);
+    const job: Job = { status: "pending" };
     const done = fn(req.body ?? {}, req.user!)
       .then((data) => {
         job.status = "done";
@@ -264,21 +280,37 @@ export function functionsRouter() {
         job.status = "error";
         job.code = error instanceof HttpError || error instanceof AiError ? error.status : 500;
         job.error = error instanceof Error ? error.message : String(error);
-      });
+      })
+      .then(() => saveJob(id, job))
+      .catch((error) => console.error(`No se pudo guardar el resultado de ${req.params.name}:`, error));
     await Promise.race([done, new Promise((r) => setTimeout(r, WAIT_MS))]);
     if (job.status === "pending") return res.status(202).json({ status: "pending", id });
-    jobs.delete(id);
+    await done; // el resultado ya está; nos aseguramos de no dejar la fila a medio guardar
+    await db.query("DELETE FROM function_jobs WHERE id = ?", [id]);
     const { status, body } = finishedResponse(job);
     res.status(status).json(body);
   }));
 
   router.get("/jobs/:id", wrap(async (req: AuthedRequest, res) => {
-    const job = jobs.get(req.params.id);
-    if (!job || job.userId !== req.user!.id) {
+    const db = getPool();
+    const [rows] = await db.query<any[]>(
+      "SELECT status, data, error, code, TIMESTAMPDIFF(SECOND, created_at, UTC_TIMESTAMP()) AS age FROM function_jobs WHERE id = ? AND user_id = ?",
+      [req.params.id, req.user!.id],
+    );
+    const row = rows[0];
+    if (!row || (row.status === "pending" && row.age * 1000 > STALE_MS)) {
+      if (row) await db.query("DELETE FROM function_jobs WHERE id = ?", [req.params.id]);
+      console.warn(`Pedido ${req.params.id} no encontrado o vencido.`);
       throw new HttpError(404, "El pedido se perdió (el servidor pudo haberse reiniciado). Probá de nuevo.");
     }
-    if (job.status === "pending") return res.status(202).json({ status: "pending", id: req.params.id });
-    jobs.delete(req.params.id);
+    if (row.status === "pending") return res.status(202).json({ status: "pending", id: req.params.id });
+    await db.query("DELETE FROM function_jobs WHERE id = ?", [req.params.id]);
+    const job: Job = {
+      status: row.status,
+      data: row.data == null ? null : JSON.parse(row.data),
+      error: row.error ?? undefined,
+      code: row.code ?? undefined,
+    };
     const { status, body } = finishedResponse(job);
     res.status(status).json(body);
   }));

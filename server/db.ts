@@ -72,6 +72,19 @@ const SCHEMA = [
     expires_at DATETIME NOT NULL,
     CONSTRAINT fk_resets_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   ) ${TABLE_OPTIONS}`,
+  // Estado de las funciones largas (IA). Va en la base y no en memoria porque Hostinger
+  // corre varios procesos de la app y la consulta puede llegar a otro proceso.
+  `CREATE TABLE IF NOT EXISTS function_jobs (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    status VARCHAR(10) NOT NULL,
+    data LONGTEXT NULL,
+    error TEXT NULL,
+    code INT NULL,
+    created_at DATETIME NOT NULL,
+    INDEX idx_function_jobs_created (created_at),
+    CONSTRAINT fk_function_jobs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ${TABLE_OPTIONS}`,
 
   // ---------- Llamados guardados (oportunidades de cada usuario) ----------
   `CREATE TABLE IF NOT EXISTS llamados (
