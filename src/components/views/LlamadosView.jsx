@@ -4,24 +4,35 @@ import LlamadoCard from '@/components/LlamadoCard';
 import LlamadoDetailModal from '@/components/LlamadoDetailModal';
 import { Loader2, AlertCircle, RefreshCw, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import MultiSelectFilter from '@/components/MultiSelectFilter';
+
+const ORGANISMOS_KEY = 'comprasuy.llamados.organismos';
 
 const LlamadosView = () => {
   const { user } = useAuth();
   const [llamados, setLlamados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedOrganismo, setSelectedOrganismo] = useState('all');
+  // Organismos marcados (vacío = todos). Se recuerda en este navegador.
+  const [selectedOrganismos, setSelectedOrganismos] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(ORGANISMOS_KEY) || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(ORGANISMOS_KEY, JSON.stringify(selectedOrganismos));
+    } catch {
+      /* sin almacenamiento: el filtro igual funciona */
+    }
+  }, [selectedOrganismos]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLlamado, setSelectedLlamado] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,18 +102,24 @@ const LlamadosView = () => {
     fetchFromRss(true); 
   }, [fetchSavedOpportunities]);
 
-  const organismosUnicos = useMemo(() => {
-    if (!llamados) return ['all'];
-    const allOrganismos = new Set(llamados.map(l => l.organismo).filter(Boolean));
-    return ['all', ...Array.from(allOrganismos).sort()];
-  }, [llamados]);
+  const { organismosUnicos, conteoOrganismos } = useMemo(() => {
+    const conteo = {};
+    for (const l of llamados || []) if (l.organismo) conteo[l.organismo] = (conteo[l.organismo] || 0) + 1;
+    // Los marcados que ya no aparecen en el RSS siguen en la lista para poder desmarcarlos.
+    const nombres = new Set([...Object.keys(conteo), ...selectedOrganismos]);
+    return {
+      organismosUnicos: Array.from(nombres).sort((a, b) => a.localeCompare(b, 'es')),
+      conteoOrganismos: conteo,
+    };
+  }, [llamados, selectedOrganismos]);
 
   const filteredLlamados = useMemo(() => {
     if (!llamados) return [];
     let result = llamados;
 
-    if (selectedOrganismo !== 'all') {
-      result = result.filter(l => l.organismo === selectedOrganismo);
+    if (selectedOrganismos.length > 0) {
+      const marcados = new Set(selectedOrganismos);
+      result = result.filter(l => marcados.has(l.organismo));
     }
 
     if (searchTerm) {
@@ -115,7 +132,7 @@ const LlamadosView = () => {
     }
 
     return result;
-  }, [llamados, selectedOrganismo, searchTerm]);
+  }, [llamados, selectedOrganismos, searchTerm]);
 
   const handleViewOriginal = (llamado) => {
     if (llamado.link) {
@@ -238,18 +255,17 @@ const LlamadosView = () => {
                 />
             </div>
             <div className="w-full sm:w-auto">
-                <Select value={selectedOrganismo} onValueChange={setSelectedOrganismo} disabled={loading || !!error}>
-                <SelectTrigger className="w-full sm:w-[280px] bg-white">
-                    <SelectValue placeholder="Filtrar por organismo..." />
-                </SelectTrigger>
-                <SelectContent>
-                    {organismosUnicos.map(org => (
-                    <SelectItem key={org} value={org}>
-                        {org === 'all' ? 'Todos los organismos' : org}
-                    </SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
+                <MultiSelectFilter
+                  options={organismosUnicos}
+                  selected={selectedOrganismos}
+                  onChange={setSelectedOrganismos}
+                  counts={conteoOrganismos}
+                  allLabel="Todos los organismos"
+                  pluralLabel="organismos"
+                  searchPlaceholder="Buscar organismo…"
+                  disabled={loading || !!error}
+                  className="sm:w-[300px]"
+                />
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
                 <Button onClick={() => fetchFromRss(false)} disabled={isRefreshing} className="flex-grow sm:flex-grow-0">
