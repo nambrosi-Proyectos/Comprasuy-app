@@ -81,6 +81,7 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
 
       if (data.items && data.items.length > 0) {
         const newItems = data.items.map(item => ({
+          ...item,
           id: Date.now() + Math.random(),
           item: item.item || '',
           cantidad: item.cantidad || 1,
@@ -91,8 +92,10 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
         }));
         setItems(newItems);
         toast({
-          title: "✅ ¡Ítems extraídos!",
-          description: "Se han cargado los ítems detectados por la IA.",
+          title: `✅ ¡${newItems.length} ítems cargados!`,
+          description: data.fuente === 'pagina'
+            ? 'Tomados de la página del llamado: número, código, cantidades y características.'
+            : 'Se han cargado los ítems detectados por la IA.',
         });
       } else {
         toast({
@@ -122,6 +125,7 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
     }
 
     setItems(initialItems.map(item => ({
+      ...item,
       id: item.id || Date.now() + Math.random(),
       item: item.item || item.descripcion || '',
       cantidad: item.cantidad || 1,
@@ -272,7 +276,7 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
                         <Plus className="w-4 h-4 mr-2" /> Añadir Ítem Manualmente
                     </Button>
                     <Button onClick={extractItemsWithAI} className="w-full sm:w-auto flex-grow bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                        <Wand2 className="w-4 h-4 mr-2" /> Cargar Ítems con IA
+                        <Wand2 className="w-4 h-4 mr-2" /> Cargar Ítems del Llamado
                     </Button>
                 </div>
                 {items.length > 0 ? items.map((item, index) => {
@@ -296,13 +300,19 @@ const PresupuestoModal = ({ isOpen, onClose, onSave, llamado }) => {
                   return (
                     <motion.div key={item.id} layout className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4 dark:bg-slate-800/50 dark:border-slate-700">
                       <div className="flex justify-between items-center">
-                        <Input value={item.item} onChange={e => handleItemChange(item.id, 'item', e.target.value)} placeholder="Nombre del Ítem" className="text-lg font-semibold bg-transparent border-0 ring-0 focus:ring-0 px-1 dark:text-white" />
+                        <textarea
+                          value={item.item}
+                          onChange={e => handleItemChange(item.id, 'item', e.target.value)}
+                          placeholder="Nombre del Ítem"
+                          rows={item.item && item.item.length > 90 ? 3 : 1}
+                          className="w-full resize-y text-base font-semibold bg-transparent border-0 outline-none focus:ring-0 px-1 text-slate-800 dark:text-white"
+                        />
                         <Button variant="ghost" size="icon" className="text-red-500/70 hover:text-red-500 hover:bg-red-500/10" onClick={() => handleRemoveItem(item.id)}>
                           <Trash2 className="w-5 h-5" />
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                          <div className="space-y-1"><Label htmlFor={`cantidad-${index}`}>Cantidad</Label><Input id={`cantidad-${index}`} type="number" value={item.cantidad} onChange={e => handleItemChange(item.id, 'cantidad', parseFloat(e.target.value))} /></div>
+                          <div className="space-y-1"><Label htmlFor={`cantidad-${index}`}>Cantidad{item.unidad ? ` (${item.unidad})` : ''}</Label><Input id={`cantidad-${index}`} type="number" value={item.cantidad} onChange={e => handleItemChange(item.id, 'cantidad', parseFloat(e.target.value))} /></div>
                           <div className="space-y-1"><Label htmlFor={`precio-${index}`}>Costo Unitario Item</Label><Input id={`precio-${index}`} type="number" value={item.precio} onChange={e => handleItemChange(item.id, 'precio', parseFloat(e.target.value))} /></div>
                           <div className="space-y-1"><Label htmlFor={`flete-${index}`}>Flete Total</Label><Input id={`flete-${index}`} type="number" value={item.flete} onChange={e => handleItemChange(item.id, 'flete', parseFloat(e.target.value))} /></div>
                           <div className="space-y-1"><Label htmlFor={`utilidad-${index}`}>Utilidad (%)</Label><Input id={`utilidad-${index}`} type="number" value={item.utilidad} onChange={e => handleItemChange(item.id, 'utilidad', parseFloat(e.target.value))} /></div>

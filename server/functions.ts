@@ -11,6 +11,7 @@ import { generateText, extractJson, aiProvider, AiError } from "./ai";
 import { renderPrompt } from "./prompts";
 import { querySql } from "./rest";
 import { getPool } from "./db";
+import { type ItemLlamado, fetchLlamadoItems, itemTexto, cantidadTexto } from "./llamadoPage";
 
 type Fn = (body: any, user: User) => Promise<unknown>;
 
@@ -89,34 +90,82 @@ const rssFunction = (kind: "llamados" | "adjudicaciones" | "todos", key: string,
 
 // ---------- IA ----------
 
-function pliegoTexto(llamado: any) {
+/** Ítems leídos de la página del llamado; si la página no responde, se sigue sin ellos. */
+async function itemsDelLlamado(llamado: any): Promise<ItemLlamado[] | null> {
+  try {
+    return await fetchLlamadoItems(llamado?.link);
+  } catch (error) {
+    console.warn(`No se pudieron leer los ítems de ${llamado?.link}:`, error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+/** Hasta cuántos ítems se le pasan a la IA (la lista completa igual se devuelve a la pantalla). */
+const MAX_ITEMS_IA = 300;
+
+function itemsParaIA(items: ItemLlamado[] | null): string {
+  if (!items?.length) return "";
+  const lista = items.slice(0, MAX_ITEMS_IA).map(itemTexto).join("\n");
+  const resto = items.length > MAX_ITEMS_IA ? `\n(… y ${items.length - MAX_ITEMS_IA} ítems más)` : "";
+  return `\n\nÍtems del llamado según la página de comprasestatales.gub.uy (${items.length} en total):\n${lista}${resto}`;
+}
+
+function pliegoTexto(llamado: any, items: ItemLlamado[] | null) {
   if (!llamado || !llamado.titulo || !llamado.descripcion_completa) throw new HttpError(400, "Datos del llamado incompletos.");
   return `
       Título: ${llamado.titulo}
       Organismo: ${llamado.organismo}
       Descripción Completa: ${llamado.descripcion_completa}
-    `;
+    ${itemsParaIA(items)}`;
 }
+
+/** Ítem de la página → forma que usa el presupuesto (el texto lleva todo lo necesario para cotizar). */
+const itemParaPresupuesto = (item: ItemLlamado) => ({
+  // La cantidad va en su propio campo; en el texto queda solo la unidad de medida.
+  item: itemTexto(item).replace(/ \| Cantidad: [^|]*?(?= \||$)/, item.unidad ? ` | Unidad: ${item.unidad}` : ""),
+  cantidad: item.cantidad ?? 1,
+  unidad: item.unidad,
+  numero_item: item.numero,
+  codigo_articulo: item.codigo_articulo,
+  caracteristicas: item.caracteristicas,
+  datos: item.datos,
+});
 
 const analyzeLlamado: Fn = async ({ llamado }) => {
   if (!llamado?.titulo) throw new HttpError(400, "Datos del llamado incompletos.");
+  const items = await itemsDelLlamado(llamado);
   const prompt = await renderPrompt("analizar_llamado", {
     titulo: String(llamado.titulo),
-    descripcion: String(llamado.descripcionCompleta ?? llamado.descripcion_completa ?? ""),
+    descripcion: String(llamado.descripcionCompleta ?? llamado.descripcion_completa ?? "") + itemsParaIA(items),
   });
-  return extractJson(await generateText(prompt), "object");
+  const result = extractJson<Record<string, any>>(await generateText(prompt), "object");
+  if (items?.length) {
+    // La lista exacta de la página reemplaza a la que haya deducido la IA.
+    result.items_solicitados = items.map((item) => ({
+      item: `Ítem ${item.numero}: ${item.nombre}`,
+      descripcion: itemTexto(item).split(" | ").slice(1).filter((p) => !p.startsWith("Cantidad:")).join(" · "),
+      cantidad: cantidadTexto(item),
+    }));
+    result.items = items;
+    // Lo que se guarda en el llamado para presupuestar después (cantidad numérica exacta).
+    result.items_presupuesto = items.map(itemParaPresupuesto);
+  }
+  return result;
 };
 
 const analyzePliego: Fn = async ({ llamado, presupuesto, extract_items_only }) => {
-  const pliego = pliegoTexto(llamado);
+  const items = await itemsDelLlamado(llamado);
   if (extract_items_only) {
-    const result = await generateText(await renderPrompt("extraer_items", { pliego }));
+    // Con la página del llamado no hace falta la IA: los ítems salen tal cual están publicados.
+    if (items?.length) return { items: items.map(itemParaPresupuesto), fuente: "pagina" };
+    const result = await generateText(await renderPrompt("extraer_items", { pliego: pliegoTexto(llamado, null) }));
     try {
-      return extractJson(result, "object");
+      return { ...extractJson<Record<string, any>>(result, "object"), fuente: "ia" };
     } catch {
-      return { items: [] };
+      return { items: [], fuente: "ia" };
     }
   }
+  const pliego = pliegoTexto(llamado, items);
   const presupuestoTexto =
     presupuesto?.items?.length > 0
       ? `Presupuesto que hemos preparado:
@@ -124,17 +173,26 @@ const analyzePliego: Fn = async ({ llamado, presupuesto, extract_items_only }) =
         Monto total: ${typeof presupuesto.total_presupuesto === "number" ? presupuesto.total_presupuesto.toFixed(2) : "No calculado"}`
       : "No se ha preparado un presupuesto detallado todavía.";
 
-  const [analysisText, proposal] = await Promise.all([
-    renderPrompt("analisis_pliego", { pliego }).then(generateText),
-    renderPrompt("propuesta_tecnica", { pliego, presupuesto: presupuestoTexto }).then(generateText),
-  ]);
+  let analysisText: string;
+  let proposal: string;
+  try {
+    [analysisText, proposal] = await Promise.all([
+      renderPrompt("analisis_pliego", { pliego }).then(generateText),
+      renderPrompt("propuesta_tecnica", { pliego, presupuesto: presupuestoTexto }).then(generateText),
+    ]);
+  } catch (error) {
+    // Si la IA falla pero ya tenemos los ítems de la página, igual se muestran.
+    if (!items?.length) throw error;
+    console.warn("Análisis de IA falló; se devuelven solo los ítems:", error instanceof Error ? error.message : error);
+    return { analysis: null, proposal: "", items, ai_error: error instanceof Error ? error.message : String(error) };
+  }
   let analysis: unknown = {};
   try {
     analysis = extractJson(analysisText, "object");
   } catch {
     analysis = {};
   }
-  return { analysis, proposal };
+  return { analysis, proposal, items: items ?? [] };
 };
 
 const analyzeTextBudget: Fn = async ({ plainText, clienteId, allProducts, budgetMoneda }) => {

@@ -4,6 +4,7 @@ import { X, Loader2, Sparkles, Clipboard, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import ItemsLlamadoTable from '@/components/ItemsLlamadoTable';
 
 const backdrop = {
   visible: { opacity: 1 },
@@ -24,6 +25,7 @@ const AnalisisIAModal = ({ isOpen, onClose, llamado }) => {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [proposal, setProposal] = useState('');
+  const [items, setItems] = useState([]);
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
@@ -33,6 +35,7 @@ const AnalisisIAModal = ({ isOpen, onClose, llamado }) => {
       setLoading(true);
       setAnalysis(null);
       setProposal('');
+      setItems([]);
 
       try {
         const { data: presupuesto, error: presupuestoError } = await supabase
@@ -59,10 +62,19 @@ const AnalisisIAModal = ({ isOpen, onClose, llamado }) => {
 
         setAnalysis(data.analysis);
         setProposal(data.proposal);
-        toast({
-          title: '🤖 ¡Análisis completado!',
-          description: 'La IA ha procesado el pliego y generado una propuesta.',
-        });
+        setItems(Array.isArray(data.items) ? data.items : []);
+        if (data.ai_error) {
+          toast({
+            variant: 'destructive',
+            title: '⚠️ La IA no respondió',
+            description: `Se muestran los ítems del llamado, pero falta el análisis: ${data.ai_error}`,
+          });
+        } else {
+          toast({
+            title: '🤖 ¡Análisis completado!',
+            description: 'La IA ha procesado el pliego y generado una propuesta.',
+          });
+        }
 
       } catch (error) {
         console.error("Error al analizar con IA:", error);
@@ -121,6 +133,11 @@ const AnalisisIAModal = ({ isOpen, onClose, llamado }) => {
                 </div>
               ) : (
                 <>
+                  {items.length > 0 && (
+                    <div className="md:col-span-2">
+                      <ItemsLlamadoTable items={items} />
+                    </div>
+                  )}
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 space-y-4">
                     <h3 className="text-lg font-semibold text-slate-700 dark:text-white">Análisis del Pliego</h3>
                     {analysis ? (

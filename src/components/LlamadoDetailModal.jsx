@@ -4,6 +4,7 @@ import { X, ExternalLink, Sparkles, Package, Hash, Bot, AlertTriangle, Lightbulb
 import { Button } from '@/components/ui/button';
 import { analyzeLlamadoWithAI } from '@/lib/gemini';
 import { useToast } from '@/components/ui/use-toast';
+import ItemsLlamadoTable from '@/components/ItemsLlamadoTable';
 
 const backdrop = {
   visible: { opacity: 1 },
@@ -38,7 +39,7 @@ const AiAnalysisView = ({ llamado, onItemsExtracted }) => {
       const result = await analyzeLlamadoWithAI(llamado);
       setAnalysis(result);
       if (onItemsExtracted) {
-        onItemsExtracted(result.items_solicitados);
+        onItemsExtracted(result.items_presupuesto ?? result.items_solicitados);
       }
       toast({
         title: '✅ ¡Análisis completado!',
@@ -93,10 +94,13 @@ const AiAnalysisView = ({ llamado, onItemsExtracted }) => {
                 <p className="text-slate-700 dark:text-gray-300">{analysis.resumen_ejecutivo}</p>
             </div>
             
+            {analysis.items?.length > 0 ? (
+              <ItemsLlamadoTable items={analysis.items} />
+            ) : (
             <div>
                 <h4 className="font-semibold text-lg text-slate-800 flex items-center mb-3 dark:text-white"><Package className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" /> Ítems Solicitados</h4>
                 <div className="space-y-3">
-                    {analysis.items_solicitados.map((item, index) => (
+                    {(analysis.items_solicitados || []).map((item, index) => (
                         <div key={index} className="p-3 bg-white rounded-lg dark:bg-slate-800/50">
                             <div className="flex justify-between items-center font-semibold text-slate-700 dark:text-gray-200">
                                <span>{item.item}</span>
@@ -107,11 +111,12 @@ const AiAnalysisView = ({ llamado, onItemsExtracted }) => {
                     ))}
                 </div>
             </div>
+            )}
 
             <div>
                 <h4 className="font-semibold text-lg text-slate-800 flex items-center mb-3 dark:text-white"><Briefcase className="w-5 h-5 mr-2 text-orange-600 dark:text-orange-400" /> Requerimientos Clave</h4>
                  <ul className="space-y-2 list-inside">
-                    {analysis.requerimientos_clave.map((req, index) => (
+                    {(analysis.requerimientos_clave || []).map((req, index) => (
                         <li key={index} className="flex items-start text-slate-700 dark:text-gray-300"><ChevronRight className="w-5 h-5 mr-1 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0"/>{req}</li>
                     ))}
                 </ul>
