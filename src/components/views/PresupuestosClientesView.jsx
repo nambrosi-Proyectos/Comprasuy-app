@@ -177,6 +177,20 @@ const PresupuestosClientesView = () => {
     setItems(prev => [...prev, ...itemsToAdd]);
   };
 
+  // Ítem libre, que no está en los productos guardados del cliente.
+  const handleAddManualItem = () => {
+    setItems(prev => [...prev, {
+      id: Date.now() + Math.random(),
+      producto_id: null,
+      nombre: '',
+      cantidad: 1,
+      precio_unitario: '',
+      iva: 22,
+      moneda: budgetMoneda,
+      manual: true,
+      precio_manual: true,
+    }]);
+  };
 
   const handleItemChange = (id, field, value) => {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
@@ -205,11 +219,21 @@ const PresupuestosClientesView = () => {
       toast({ variant: 'destructive', title: 'Faltan datos', description: 'Selecciona un cliente y añade al menos un ítem.' });
       return;
     }
+    if (items.some(item => !String(item.nombre || '').trim())) {
+      toast({ variant: 'destructive', title: 'Falta la descripción', description: 'Escribí el nombre de cada ítem agregado a mano.' });
+      return;
+    }
     setSaving(true);
     try {
       const presupuestoData = {
         cliente_id: selectedCliente,
-        items: items.map(({ id, ...rest }) => rest),
+        items: items.map(({ id, ...rest }) => ({
+          ...rest,
+          nombre: String(rest.nombre || '').trim(),
+          cantidad: parseFloat(rest.cantidad) || 0,
+          precio_unitario: parseFloat(rest.precio_unitario) || 0,
+          iva: parseFloat(rest.iva) || 0,
+        })),
         subtotal: totals.subtotal,
         iva: totals.iva,
         total: totals.total,
@@ -330,6 +354,7 @@ const PresupuestosClientesView = () => {
             isAnalyzingBudget={isAnalyzingBudget}
             handleAnalyzeBudget={handleAnalyzeBudget}
             onAddItems={handleAddItems}
+            onAddManualItem={handleAddManualItem}
             budgetMoneda={budgetMoneda}
         />
         

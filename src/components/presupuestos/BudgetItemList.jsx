@@ -34,7 +34,17 @@ const BudgetItemList = ({
         >
           <div className="md:col-span-5 space-y-1">
             <Label className="md:hidden">Producto</Label>
-            <Input readOnly value={item.nombre} className="bg-transparent border-0 font-medium" />
+            {item.manual ? (
+              <Input
+                value={item.nombre}
+                onChange={e => handleItemChange(item.id, 'nombre', e.target.value)}
+                placeholder="Descripción del ítem"
+                autoFocus={!item.nombre}
+                className="font-medium bg-white"
+              />
+            ) : (
+              <Input readOnly value={item.nombre} className="bg-transparent border-0 font-medium" />
+            )}
           </div>
           <div className="md:col-span-2 space-y-1">
             <Label className="md:hidden">Cantidad</Label>
