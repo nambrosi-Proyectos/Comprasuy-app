@@ -11,14 +11,14 @@ const NAV = [
   { label: 'Llamados', icon: FileText, path: '/app/llamados' },
   { label: 'Oportunidades', icon: Star, path: '/app/oportunidades' },
   { label: 'Precios Licitados', icon: History, path: '/app/precios_licitados' },
-  { label: 'Lista de Precios', icon: List, path: '/app/lista_precios' },
-  { label: 'Presupuestos', icon: FileSignature, path: '/app/presupuestos' },
   { label: 'Adjudicaciones', icon: Award, path: '/app/adjudicaciones' },
+  { label: 'Presupuestos', icon: FileSignature, path: '/app/presupuestos' },
+  { label: 'Presupuestos Entregados', icon: List, path: '/app/lista_precios' },
   { label: 'Configuración', icon: Settings, path: '/app/configuracion' },
 ];
 
 const navClass = ({ isActive }) =>
-  `flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 font-semibold whitespace-nowrap transition-colors max-[860px]:py-2 max-[860px]:px-2.5 max-[860px]:text-sm ${
+  `flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 font-semibold leading-tight whitespace-nowrap min-[861px]:whitespace-normal transition-colors max-[860px]:py-2 max-[860px]:px-2.5 max-[860px]:text-sm ${
     isActive ? 'bg-brand text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
   }`;
 

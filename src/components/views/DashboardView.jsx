@@ -95,7 +95,7 @@ const DashboardView = () => {
         <NavButton to="/app/oportunidades" icon={Star} label="Oportunidades" desc="Llamados guardados para cotizar" />
         <NavButton to="/app/adjudicaciones" icon={Award} label="Adjudicaciones" desc="Resultados y precios adjudicados" />
         <NavButton to="/app/presupuestos" icon={FileSignature} label="Presupuestos" desc="Presupuestos a clientes" />
-        <NavButton to="/app/lista_precios" icon={List} label="Lista de Precios" desc="Presupuestos generados para clientes" />
+        <NavButton to="/app/lista_precios" icon={List} label="Presupuestos Entregados" desc="Presupuestos generados para clientes" />
         <NavButton to="/app/configuracion" icon={Settings} label="Configuración" desc="Empresa, usuarios, filtros y prompts" />
       </div>
     </div>

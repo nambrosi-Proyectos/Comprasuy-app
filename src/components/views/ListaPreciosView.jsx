@@ -106,7 +106,7 @@ const ListaPreciosView = () => {
       </AlertDialog>
 
       <div>
-        <h1 className="text-[26px] font-extrabold text-ink">Lista de Precios</h1>
+        <h1 className="text-[26px] font-extrabold text-ink">Presupuestos Entregados</h1>
         <p className="text-slate-500">Presupuestos generados para clientes. Los precios de licitaciones están en Precios Licitados.</p>
       </div>
 
