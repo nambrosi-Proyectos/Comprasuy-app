@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Copy, FileDown, Loader2 } from 'lucide-react';
+import { X, Copy, FileDown, Loader2, Printer } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import jsPDF from 'jspdf';
@@ -36,31 +36,53 @@ export const BudgetPreviewModal = ({ isOpen, onClose, presupuesto, cliente, conf
     toast({ title: '✅ Copiado', description: 'El presupuesto ha sido copiado al portapapeles.' });
   };
 
-  const handleExportPDF = async () => {
+  // Hoja A4 vertical con márgenes de 10 mm; si el presupuesto es largo sigue en más hojas.
+  const generarPDF = async () => {
+    const canvas = await html2canvas(pdfRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const margen = 10;
+    const ancho = pdf.internal.pageSize.getWidth() - margen * 2;
+    const altoHoja = pdf.internal.pageSize.getHeight() - margen * 2;
+    const pxPorMm = canvas.width / ancho;
+    const altoHojaPx = Math.floor(altoHoja * pxPorMm);
+    for (let y = 0, hoja = 0; y < canvas.height; y += altoHojaPx, hoja++) {
+      const trozo = document.createElement('canvas');
+      trozo.width = canvas.width;
+      trozo.height = Math.min(altoHojaPx, canvas.height - y);
+      const ctx = trozo.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, trozo.width, trozo.height);
+      ctx.drawImage(canvas, 0, -y);
+      if (hoja > 0) pdf.addPage();
+      pdf.addImage(trozo.toDataURL('image/jpeg', 0.92), 'JPEG', margen, margen, ancho, trozo.height / pxPorMm);
+    }
+    return pdf;
+  };
+
+  const nombreArchivo = () => `presupuesto-${cliente.name.replace(/\s/g, '_')}-${presupuesto.id.substring(0, 8)}.pdf`;
+
+  const conPDF = async (accion) => {
     setIsGenerating(true);
-    toast({ title: '📄 Generando PDF...', description: 'Por favor espera un momento.' });
-    const input = pdfRef.current;
     try {
-      const canvas = await html2canvas(input, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-      pdf.save(`presupuesto-${cliente.name.replace(/\s/g, '_')}-${presupuesto.id.substring(0, 8)}.pdf`);
+      accion(await generarPDF());
     } catch (error) {
-        console.error("Error al generar PDF:", error)
-        toast({ variant: 'destructive', title: 'Error al generar PDF', description: error.message });
+      console.error('Error al generar PDF:', error);
+      toast({ variant: 'destructive', title: 'Error al generar PDF', description: error.message });
     } finally {
-        setIsGenerating(false);
+      setIsGenerating(false);
     }
   };
+
+  const handleExportPDF = () => conPDF((pdf) => pdf.save(nombreArchivo()));
+
+  const handlePrint = () =>
+    conPDF((pdf) => {
+      pdf.autoPrint();
+      const url = pdf.output('bloburl');
+      if (!window.open(url, '_blank')) {
+        toast({ variant: 'destructive', title: 'El navegador bloqueó la ventana', description: 'Permití ventanas emergentes o usá Exportar a PDF.' });
+      }
+    });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -70,11 +92,13 @@ export const BudgetPreviewModal = ({ isOpen, onClose, presupuesto, cliente, conf
             <DialogTitle className="text-2xl">Vista Previa del Presupuesto</DialogTitle>
           </DialogHeader>
           
-          <div className="p-6 max-h-[70vh] overflow-y-auto">
-             <div ref={pdfRef} className="p-8 bg-white text-black">
+          <div className="p-6 max-h-[70vh] overflow-auto">
+             {/* Ancho de una hoja A4 (794 px a 96 ppp) para que el PDF salga igual que la vista previa. */}
+             <div ref={pdfRef} className="w-[794px] mx-auto p-10 bg-white text-black">
                 <header className="flex justify-between items-start pb-6 border-b">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">{config?.razon_social || 'Mi Empresa'}</h1>
+                        <img src="/logo-comprasuy.webp" alt="Comprasuy" width="200" height="50" className="w-[200px] h-[50px] object-contain object-left mb-3" />
+                        <h1 className="text-xl font-bold text-gray-800">{config?.razon_social || 'Mi Empresa'}</h1>
                         <p className="text-sm text-gray-500">{config?.direccion || 'Dirección de la empresa'}</p>
                         <p className="text-sm text-gray-500">{config?.email || 'email@empresa.com'} | {config?.telefono || 'Teléfono'}</p>
                     </div>
@@ -146,6 +170,9 @@ export const BudgetPreviewModal = ({ isOpen, onClose, presupuesto, cliente, conf
           <DialogFooter className="p-6 pt-0 flex-row justify-end space-x-2">
             <Button variant="outline" onClick={handleCopy}>
               <Copy className="mr-2 h-4 w-4" /> Copiar
+            </Button>
+            <Button variant="outline" onClick={handlePrint} disabled={isGenerating}>
+              <Printer className="mr-2 h-4 w-4" /> Imprimir
             </Button>
             <Button onClick={handleExportPDF} disabled={isGenerating}>
               {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
