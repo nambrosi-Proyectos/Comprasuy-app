@@ -178,17 +178,17 @@ const PresupuestosClientesView = () => {
   };
 
   // Ítem libre, que no está en los productos guardados del cliente.
-  const handleAddManualItem = () => {
+  const handleAddManualItem = ({ nombre, cantidad, precio_unitario, iva }) => {
     setItems(prev => [...prev, {
       id: Date.now() + Math.random(),
       producto_id: null,
-      nombre: '',
-      cantidad: 1,
-      precio_unitario: '',
-      iva: 22,
+      nombre,
+      cantidad,
+      precio_unitario,
+      iva,
       moneda: budgetMoneda,
       manual: true,
-      precio_manual: true,
+      precio_manual: !precio_unitario,
     }]);
   };
 

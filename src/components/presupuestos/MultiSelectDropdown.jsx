@@ -47,7 +47,7 @@ const MultiSelectDropdown = ({ options, onAddItems, disabled, budgetMoneda }) =>
     <div className="relative" ref={dropdownRef}>
       <Button onClick={() => setIsOpen(!isOpen)} disabled={disabled}>
         <Plus className="mr-2 h-4 w-4" />
-        Añadir Ítem Manualmente
+        Añadir productos del cliente
       </Button>
       <AnimatePresence>
         {isOpen && (

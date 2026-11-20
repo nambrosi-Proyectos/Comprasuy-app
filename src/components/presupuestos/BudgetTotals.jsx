@@ -22,7 +22,7 @@ const BudgetTotals = ({ totals, handleSavePresupuesto, saving, moneda }) => {
       </div>
       <Button onClick={handleSavePresupuesto} disabled={saving} className="w-full sm:w-auto">
         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-        Guardar Presupuesto
+        Listo, ver presupuesto
       </Button>
     </div>
   );

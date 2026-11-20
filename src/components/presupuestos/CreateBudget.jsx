@@ -2,8 +2,9 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Wand2, Plus } from 'lucide-react';
+import { Loader2, Wand2 } from 'lucide-react';
 import MultiSelectDropdown from './MultiSelectDropdown';
+import QuickAddItem from './QuickAddItem';
 import { useToast } from '@/components/ui/use-toast';
 
 
@@ -74,9 +75,7 @@ const CreateBudget = ({
         budgetMoneda={budgetMoneda}
       />
 
-      <Button type="button" variant="outline" onClick={onAddManualItem} disabled={!selectedCliente} className="w-full border-dashed">
-        <Plus className="mr-2 h-4 w-4" /> Agregar ítem manual (no guardado para este cliente)
-      </Button>
+      <QuickAddItem onAdd={onAddManualItem} disabled={!selectedCliente} moneda={budgetMoneda} />
     </div>
   );
 };
