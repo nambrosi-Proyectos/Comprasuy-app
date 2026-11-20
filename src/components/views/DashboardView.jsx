@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle } from 'lucide-react';
+import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle, Wallet } from 'lucide-react';
+import AlertasPagos from '@/components/pagos/AlertasPagos';
 
 const StatCard = ({ icon: Icon, title, value, accent, loading }) => (
   <motion.div
@@ -45,6 +46,17 @@ const DashboardView = () => {
     clientes: 0
   });
   const [loadingStats, setLoadingStats] = useState(true);
+  const [pagos, setPagos] = useState(null);
+
+  useEffect(() => {
+    // Alertas de pagos: solo cheques pendientes y depósitos sin pagar (pocas filas).
+    Promise.all([
+      supabase.from('cheques').select('id, proveedor, fecha_pago, monto, moneda, estado').eq('estado', 'pendiente'),
+      supabase.from('depositos').select('id, proveedor, fecha, monto, moneda, pagado').eq('pagado', false),
+    ]).then(([c, d]) => {
+      if (!c.error && !d.error) setPagos({ cheques: c.data || [], depositos: d.data || [] });
+    });
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -89,6 +101,16 @@ const DashboardView = () => {
         <StatCard icon={Users} title="Clientes" value={stats.clientes} loading={loadingStats} />
       </div>
 
+      {pagos && (pagos.cheques.length > 0 || pagos.depositos.length > 0) && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-ink">Pagos</h2>
+            <Link to="/app/pagos" className="text-sm font-semibold text-brand hover:underline">Ver pagos</Link>
+          </div>
+          <AlertasPagos cheques={pagos.cheques} depositos={pagos.depositos} />
+        </div>
+      )}
+
       <h2 className="text-base font-bold text-ink mb-3">Accesos rápidos</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <NavButton to="/app/llamados" icon={FileText} label="Llamados" desc="Lo último publicado en Compras Estatales" />
@@ -96,6 +118,7 @@ const DashboardView = () => {
         <NavButton to="/app/adjudicaciones" icon={Award} label="Adjudicaciones" desc="Resultados y precios adjudicados" />
         <NavButton to="/app/presupuestos" icon={FileSignature} label="Presupuestos" desc="Presupuestos a clientes" />
         <NavButton to="/app/lista_precios" icon={List} label="Presupuestos Entregados" desc="Presupuestos generados para clientes" />
+        <NavButton to="/app/pagos" icon={Wallet} label="Pagos" desc="Depósitos y cheques a proveedores" />
         <NavButton to="/app/configuracion" icon={Settings} label="Configuración" desc="Empresa, usuarios, filtros y prompts" />
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, FileText, Star, List, FileSignature, Award, Settings, History, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, Star, List, FileSignature, Award, Settings, History, LogOut, Wallet } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 // Mismo esquema que SVC (svc.comprasuy.com): menú lateral oscuro con el logo,
@@ -14,6 +14,7 @@ const NAV = [
   { label: 'Adjudicaciones', icon: Award, path: '/app/adjudicaciones' },
   { label: 'Presupuestos', icon: FileSignature, path: '/app/presupuestos' },
   { label: 'Presupuestos Entregados', icon: List, path: '/app/lista_precios' },
+  { label: 'Pagos', icon: Wallet, path: '/app/pagos' },
   { label: 'Configuración', icon: Settings, path: '/app/configuracion' },
 ];
 

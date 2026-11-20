@@ -58,10 +58,22 @@ export const TABLES: Record<string, TableDef> = {
     },
   },
   presupuestos_clientes: T({ cliente_id: "text", items: "json", subtotal: "num", iva: "num", total: "num", moneda: "text" }),
-  pliego_config: T({ razon_social: "text", rut: "text", direccion: "text", email: "text", telefono: "text", footer_texto: "text", firma_imagen: "text" }),
+  pliego_config: T({ razon_social: "text", rut: "text", direccion: "text", email: "text", telefono: "text", footer_texto: "text", firma_imagen: "text", whatsapp_pagos: "text" }),
   palabras_clave_llamados: T({ palabra: "text" }),
   organismos_filter: T({ name: "text" }),
   ai_prompts: T({ slug: "text", name: "text", description: "text", prompt_text: "text" }),
+  proveedores: T({
+    clave: "text", nombre: "text", rut: "text", whatsapp: "text", banco: "text", tipo_cuenta: "text",
+    numero_cuenta: "text", moneda: "text", notas: "text",
+  }),
+  depositos: T({
+    fecha: "date", proveedor_id: "text", proveedor: "text", banco: "text", tipo_cuenta: "text", numero_cuenta: "text",
+    moneda: "text", monto: "num", concepto: "text", pagado: "bool", fecha_pagado: "date", import_key: "text",
+  }),
+  cheques: T({
+    proveedor_id: "text", proveedor: "text", fecha_entrega: "date", fecha_pago: "date", banco: "text", numero: "text",
+    moneda: "text", monto: "num", concepto: "text", estado: "text", import_key: "text",
+  }),
 };
 
 interface Relation {
@@ -81,6 +93,9 @@ const RELATIONS: Record<string, Record<string, Relation>> = {
   productos_base: { precios_cliente: many("precios_cliente", "producto_id") },
   precios_cliente: { clientes: one("clientes", "cliente_id"), productos_base: one("productos_base", "producto_id") },
   presupuestos_clientes: { clientes: one("clientes", "cliente_id") },
+  proveedores: { depositos: many("depositos", "proveedor_id"), cheques: many("cheques", "proveedor_id") },
+  depositos: { proveedores: one("proveedores", "proveedor_id") },
+  cheques: { proveedores: one("proveedores", "proveedor_id") },
 };
 
 // ---------- Selección de columnas: "*, llamados(*), presupuestos!fk(id, items)" ----------

@@ -186,6 +186,57 @@ const SCHEMA = [
     CONSTRAINT fk_pc_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
   ) ${TABLE_OPTIONS}`,
 
+  // ---------- Pagos: proveedores, depósitos (transferencias) y cheques emitidos ----------
+  `CREATE TABLE IF NOT EXISTS proveedores (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    clave VARCHAR(191) NOT NULL UNIQUE,
+    nombre VARCHAR(255) NOT NULL,
+    rut VARCHAR(50) NULL,
+    whatsapp VARCHAR(50) NULL,
+    banco VARCHAR(100) NULL,
+    tipo_cuenta VARCHAR(100) NULL,
+    numero_cuenta VARCHAR(191) NULL,
+    moneda VARCHAR(10) NULL DEFAULT 'UYU',
+    notas TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ${TABLE_OPTIONS}`,
+  `CREATE TABLE IF NOT EXISTS depositos (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    fecha DATE NULL,
+    proveedor_id CHAR(36) NULL,
+    proveedor VARCHAR(255) NOT NULL,
+    banco VARCHAR(100) NULL,
+    tipo_cuenta VARCHAR(100) NULL,
+    numero_cuenta VARCHAR(191) NULL,
+    moneda VARCHAR(10) NOT NULL DEFAULT 'UYU',
+    monto DOUBLE NOT NULL DEFAULT 0,
+    concepto VARCHAR(500) NULL,
+    pagado TINYINT(1) NOT NULL DEFAULT 0,
+    fecha_pagado DATE NULL,
+    import_key VARCHAR(64) NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_depositos_fecha (fecha),
+    INDEX idx_depositos_pagado (pagado, fecha),
+    CONSTRAINT fk_depositos_proveedor FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE SET NULL
+  ) ${TABLE_OPTIONS}`,
+  `CREATE TABLE IF NOT EXISTS cheques (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    proveedor_id CHAR(36) NULL,
+    proveedor VARCHAR(255) NOT NULL,
+    fecha_entrega DATE NULL,
+    fecha_pago DATE NULL,
+    banco VARCHAR(100) NULL,
+    numero VARCHAR(50) NULL,
+    moneda VARCHAR(10) NOT NULL DEFAULT 'UYU',
+    monto DOUBLE NOT NULL DEFAULT 0,
+    concepto VARCHAR(500) NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+    import_key VARCHAR(64) NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cheques_pago (estado, fecha_pago),
+    CONSTRAINT fk_cheques_proveedor FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE SET NULL
+  ) ${TABLE_OPTIONS}`,
+
   // ---------- Configuración ----------
   `CREATE TABLE IF NOT EXISTS pliego_config (
     id CHAR(36) NOT NULL PRIMARY KEY,
@@ -222,6 +273,8 @@ const SCHEMA = [
 const ADDED_COLUMNS: { table: string; column: string; definition: string }[] = [
   // Imagen de la firma (data URL) que va al pie del pliego.
   { table: "pliego_config", column: "firma_imagen", definition: "MEDIUMTEXT NULL" },
+  // A quién se le manda por WhatsApp el aviso de un depósito a pagar.
+  { table: "pliego_config", column: "whatsapp_pagos", definition: "VARCHAR(50) NULL" },
 ];
 
 export async function initSchema(): Promise<void> {

@@ -13,6 +13,7 @@ const FIELDS = [
   { name: 'direccion', label: 'Dirección' },
   { name: 'email', label: 'Correo' },
   { name: 'telefono', label: 'Teléfono' },
+  { name: 'whatsapp_pagos', label: 'WhatsApp para avisos de pago (ej. 099 123 456)' },
 ];
 
 const MAX_FIRMA_BYTES = 5 * 1024 * 1024;
@@ -78,7 +79,7 @@ const EmpresaManagement = () => {
 
   const handleSave = async () => {
     setSaving(true);
-    const values = { razon_social: config.razon_social, rut: config.rut, direccion: config.direccion, email: config.email, telefono: config.telefono, footer_texto: config.footer_texto, firma_imagen: config.firma_imagen || null };
+    const values = { razon_social: config.razon_social, rut: config.rut, direccion: config.direccion, email: config.email, telefono: config.telefono, whatsapp_pagos: config.whatsapp_pagos || null, footer_texto: config.footer_texto, firma_imagen: config.firma_imagen || null };
     const { data, error } = config.id
       ? await supabase.from('pliego_config').update(values).eq('id', config.id).select().single()
       : await supabase.from('pliego_config').insert(values).select().single();
