@@ -87,7 +87,14 @@ async function rssEntries(kind: "llamados" | "adjudicaciones" | "todos", limit: 
   // Llamados: solo los vigentes (apertura posterior a ahora). Los que no traen fecha se dejan.
   const vigentes =
     kind === "llamados" ? entries.filter((e) => !e.fecha_cierre || new Date(e.fecha_cierre).getTime() >= Date.now()) : entries;
-  vigentes.sort((a, b) => new Date(b.fecha_publicacion).getTime() - new Date(a.fecha_publicacion).getTime());
+  const publicado = (e: Record<string, any>) => new Date(e.fecha_publicacion).getTime() || 0;
+  if (kind === "llamados") {
+    // Apertura más cercana primero; los que no traen fecha van al final (más nuevos primero).
+    const apertura = (e: Record<string, any>) => (e.fecha_cierre ? new Date(e.fecha_cierre).getTime() : Infinity);
+    vigentes.sort((a, b) => apertura(a) - apertura(b) || publicado(b) - publicado(a));
+  } else {
+    vigentes.sort((a, b) => publicado(b) - publicado(a));
+  }
   return vigentes.slice(0, limit);
 }
 
