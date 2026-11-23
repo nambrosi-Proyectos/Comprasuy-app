@@ -114,9 +114,14 @@ export const resumenPendientes = (pendientes, hoy = hoyISO()) => {
 
 /** Texto del estado de cuenta para copiar a WhatsApp. */
 export const mensajeEstadoCuenta = (cliente, cuenta) => {
-  const lineas = [`*Estado de cuenta – ${cliente.nombre}*`, ''];
+  const lineas = [
+    `Estimado cliente *${cliente.nombre}*:`,
+    '',
+    'Esperamos que se encuentre muy bien. Le hacemos llegar el estado de su cuenta corriente con *Comprasuy*.',
+    '',
+  ];
   if (cuenta.pendientes.length) {
-    lineas.push('Facturas pendientes:');
+    lineas.push('*Facturas pendientes:*');
     for (const f of cuenta.pendientes) {
       const parcial = Math.abs(f.pendiente - Number(f.importe)) > 0.5 ? ` (resta ${formatoMonto(f.pendiente, f.moneda)})` : '';
       lineas.push(`• ${fechaCorta(f.fecha)} – Factura ${f.numero || 's/n'}: ${formatoMonto(f.importe, f.moneda)}${parcial}`);
@@ -124,9 +129,14 @@ export const mensajeEstadoCuenta = (cliente, cuenta) => {
     lineas.push('');
   }
   const saldos = Object.entries(cuenta.saldos).filter(([, v]) => Math.abs(v) > 0.5);
-  if (!saldos.length) lineas.push('*Saldo: al día* ✅');
-  else for (const [m, v] of saldos) lineas.push(v > 0 ? `*Saldo a pagar: ${formatoMonto(v, m)}*` : `*Saldo a favor: ${formatoMonto(-v, m)}*`);
+  const debe = saldos.some(([, v]) => v > 0);
+  if (!saldos.length) lineas.push('*Su cuenta se encuentra al día* ✅');
+  else for (const [m, v] of saldos) lineas.push(v > 0 ? `*Saldo pendiente: ${formatoMonto(v, m)}*` : `*Saldo a su favor: ${formatoMonto(-v, m)}*`);
   if (cuenta.ultimoCobro) lineas.push('', `Último pago recibido: ${fechaCorta(cuenta.ultimoCobro.fecha)} – ${formatoMonto(cuenta.ultimoCobro.importe, cuenta.ultimoCobro.moneda)}`);
+  lineas.push('');
+  if (debe) lineas.push('Le agradecemos coordinar el pago a la brevedad. Si ya lo realizó, por favor desestime este mensaje o envíenos el comprobante.', '');
+  else lineas.push('¡Muchas gracias por estar al día!', '');
+  lineas.push('Ante cualquier consulta, quedamos a su disposición.', '', 'Saludos cordiales,', '*Comprasuy*');
   return lineas.join('\n');
 };
 
