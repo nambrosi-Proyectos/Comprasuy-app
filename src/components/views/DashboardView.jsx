@@ -3,8 +3,9 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle, Wallet } from 'lucide-react';
+import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle, Wallet, Calculator } from 'lucide-react';
 import AlertasPagos from '@/components/pagos/AlertasPagos';
+import ResumenDepositosDialog from '@/components/pagos/ResumenDepositosDialog';
 
 const StatCard = ({ icon: Icon, title, value, accent, loading }) => (
   <motion.div
@@ -47,6 +48,7 @@ const DashboardView = () => {
   });
   const [loadingStats, setLoadingStats] = useState(true);
   const [pagos, setPagos] = useState(null);
+  const [resumen, setResumen] = useState(false);
 
   useEffect(() => {
     // Alertas de pagos: solo cheques pendientes y depósitos sin pagar (pocas filas).
@@ -101,15 +103,19 @@ const DashboardView = () => {
         <StatCard icon={Users} title="Clientes" value={stats.clientes} loading={loadingStats} />
       </div>
 
-      {pagos && (pagos.cheques.length > 0 || pagos.depositos.length > 0) && (
+      {pagos && (
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h2 className="text-base font-bold text-ink">Pagos</h2>
-            <Link to="/app/pagos" className="text-sm font-semibold text-brand hover:underline">Ver pagos</Link>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={() => setResumen(true)}><Calculator className="mr-2 h-4 w-4" /> Resumen de depósitos del día</Button>
+              <Link to="/app/pagos" className="text-sm font-semibold text-brand hover:underline">Ver pagos</Link>
+            </div>
           </div>
-          <AlertasPagos cheques={pagos.cheques} depositos={pagos.depositos} />
+          {(pagos.cheques.length > 0 || pagos.depositos.length > 0) && <AlertasPagos cheques={pagos.cheques} depositos={pagos.depositos} />}
         </div>
       )}
+      <ResumenDepositosDialog open={resumen} onClose={() => setResumen(false)} />
 
       <h2 className="text-base font-bold text-ink mb-3">Accesos rápidos</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

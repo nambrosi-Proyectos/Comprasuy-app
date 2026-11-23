@@ -8,7 +8,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Plus, Upload, Search, MessageCircle, Pencil, Trash2, Landmark, Receipt, Users } from 'lucide-react';
+import { Loader2, Plus, Upload, Search, MessageCircle, Pencil, Trash2, Landmark, Receipt, Users, Calculator } from 'lucide-react';
 import {
   ESTADOS_CHEQUE, fechaCorta, formatoMonto, hoyISO, sumarDias, textoTotales, totalesPorMoneda,
   normalizarBanco, nombreProveedor,
@@ -16,6 +16,7 @@ import {
 import { usePagos, asegurarProveedor } from '@/components/pagos/usePagos';
 import AlertasPagos from '@/components/pagos/AlertasPagos';
 import WhatsAppDialog from '@/components/pagos/WhatsAppDialog';
+import ResumenDepositosDialog from '@/components/pagos/ResumenDepositosDialog';
 import { DepositoForm, ChequeForm, ProveedorForm } from '@/components/pagos/Formularios';
 import { importarPlanillaPagos } from '@/components/pagos/importarPlanilla';
 import { claveProveedor } from '@/lib/pagos';
@@ -66,6 +67,7 @@ const PagosView = () => {
   const [whatsapp, setWhatsapp] = useState(null); // { deposito, titulo }
   const [aBorrar, setABorrar] = useState(null); // { tipo, fila }
   const [importando, setImportando] = useState(null);
+  const [resumen, setResumen] = useState(false);
   const fileRef = useRef(null);
 
   const cambiarTab = (t) => { setTab(t); setQ(''); setVisibles(PAGINA); };
@@ -260,6 +262,7 @@ const PagosView = () => {
           <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={!!importando}>
             <Upload className="mr-2 h-4 w-4" /> Importar planilla
           </Button>
+          <Button variant="outline" onClick={() => setResumen(true)}><Calculator className="mr-2 h-4 w-4" /> Resumen del día</Button>
           <Button onClick={() => setForm({ tipo: 'depositos', inicial: null })}><Plus className="mr-2 h-4 w-4" /> Nuevo depósito</Button>
           <Button onClick={() => setForm({ tipo: 'cheques', inicial: null })}><Plus className="mr-2 h-4 w-4" /> Nuevo cheque</Button>
         </div>
@@ -477,6 +480,8 @@ const PagosView = () => {
       <DepositoForm open={form?.tipo === 'depositos'} inicial={form?.tipo === 'depositos' ? form.inicial : null} proveedores={proveedores} onClose={() => setForm(null)} onSave={guardarDeposito} />
       <ChequeForm open={form?.tipo === 'cheques'} inicial={form?.tipo === 'cheques' ? form.inicial : null} proveedores={proveedores} onClose={() => setForm(null)} onSave={guardarCheque} />
       <ProveedorForm open={form?.tipo === 'proveedores'} inicial={form?.tipo === 'proveedores' ? form.inicial : null} onClose={() => setForm(null)} onSave={guardarProveedor} />
+
+      <ResumenDepositosDialog open={resumen} onClose={() => setResumen(false)} />
 
       {whatsapp && (
         <WhatsAppDialog deposito={whatsapp.deposito} titulo={whatsapp.titulo} config={config} onConfigChange={setConfig} onClose={() => setWhatsapp(null)} />

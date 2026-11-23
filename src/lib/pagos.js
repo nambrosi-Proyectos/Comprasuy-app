@@ -142,6 +142,23 @@ export const urlWhatsApp = (numero, texto) => {
   return `https://wa.me/${n}?text=${encodeURIComponent(texto)}`;
 };
 
+/** Resumen de los depósitos de un día: detalle y suma en pesos y en dólares, listo para WhatsApp. */
+export const mensajeResumenDepositos = (fechaIso, depositos) => {
+  const t = totalesPorMoneda(depositos);
+  const cant = (moneda) => depositos.filter((d) => (d.moneda || 'UYU') === moneda).length;
+  const detalle = (moneda) =>
+    depositos
+      .filter((d) => (d.moneda || 'UYU') === moneda)
+      .map((d) => `• ${d.proveedor || 'Sin proveedor'}: ${formatoMonto(d.monto, moneda)}${d.pagado ? ' ✅' : ''}`);
+  const lineas = [`*Depósitos del ${fechaCorta(fechaIso)}*`, ''];
+  if (!depositos.length) return [...lineas, 'No hay depósitos para este día.'].join('\n');
+  if (cant('UYU')) lineas.push('*En pesos*', ...detalle('UYU'), '');
+  if (cant('USD')) lineas.push('*En dólares*', ...detalle('USD'), '');
+  lineas.push(`*Total pesos: ${formatoMonto(t.UYU || 0, 'UYU')}* (${cant('UYU')} ${cant('UYU') === 1 ? 'depósito' : 'depósitos'})`);
+  lineas.push(`*Total dólares: ${formatoMonto(t.USD || 0, 'USD')}* (${cant('USD')} ${cant('USD') === 1 ? 'depósito' : 'depósitos'})`);
+  return lineas.join('\n');
+};
+
 // ---------- Planilla "DEPOSITOS Y CHEQUES" ----------
 
 // Hash corto y estable para no duplicar filas si se importa la planilla otra vez.
