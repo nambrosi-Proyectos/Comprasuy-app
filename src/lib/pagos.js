@@ -162,7 +162,7 @@ export const mensajeResumenDepositos = (fechaIso, depositos) => {
 // ---------- Planilla "DEPOSITOS Y CHEQUES" ----------
 
 // Hash corto y estable para no duplicar filas si se importa la planilla otra vez.
-const hash = (texto) => {
+export const hash = (texto) => {
   let h1 = 0xdeadbeef;
   let h2 = 0x41c6ce57;
   for (let i = 0; i < texto.length; i++) {

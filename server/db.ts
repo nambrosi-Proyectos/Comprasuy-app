@@ -237,6 +237,53 @@ const SCHEMA = [
     CONSTRAINT fk_cheques_proveedor FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE SET NULL
   ) ${TABLE_OPTIONS}`,
 
+  // ---------- Cobros: facturas emitidas (al Estado y a privados) y pagos recibidos ----------
+  `CREATE TABLE IF NOT EXISTS cobro_clientes (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    clave VARCHAR(191) NOT NULL UNIQUE,
+    nombre VARCHAR(255) NOT NULL,
+    tipo VARCHAR(20) NOT NULL DEFAULT 'estado',
+    modalidad VARCHAR(20) NOT NULL DEFAULT 'factura',
+    rut VARCHAR(50) NULL,
+    whatsapp VARCHAR(50) NULL,
+    notas TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ${TABLE_OPTIONS}`,
+  `CREATE TABLE IF NOT EXISTS facturas (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    emisor VARCHAR(20) NOT NULL DEFAULT 'comprasuy',
+    cliente_id CHAR(36) NULL,
+    cliente VARCHAR(255) NOT NULL,
+    numero VARCHAR(50) NULL,
+    fecha DATE NULL,
+    oc VARCHAR(100) NULL,
+    moneda VARCHAR(10) NOT NULL DEFAULT 'UYU',
+    importe DOUBLE NOT NULL DEFAULT 0,
+    cobrada TINYINT(1) NOT NULL DEFAULT 0,
+    fecha_cobro DATE NULL,
+    detalle VARCHAR(500) NULL,
+    import_key VARCHAR(64) NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_facturas_fecha (fecha),
+    INDEX idx_facturas_cobrada (cobrada, fecha),
+    CONSTRAINT fk_facturas_cliente FOREIGN KEY (cliente_id) REFERENCES cobro_clientes(id) ON DELETE SET NULL
+  ) ${TABLE_OPTIONS}`,
+  `CREATE TABLE IF NOT EXISTS cobros (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    emisor VARCHAR(20) NOT NULL DEFAULT 'comprasuy',
+    cliente_id CHAR(36) NULL,
+    cliente VARCHAR(255) NOT NULL,
+    fecha DATE NULL,
+    moneda VARCHAR(10) NOT NULL DEFAULT 'UYU',
+    importe DOUBLE NOT NULL DEFAULT 0,
+    medio VARCHAR(100) NULL,
+    detalle VARCHAR(500) NULL,
+    import_key VARCHAR(64) NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cobros_fecha (fecha),
+    CONSTRAINT fk_cobros_cliente FOREIGN KEY (cliente_id) REFERENCES cobro_clientes(id) ON DELETE SET NULL
+  ) ${TABLE_OPTIONS}`,
+
   // ---------- Configuración ----------
   `CREATE TABLE IF NOT EXISTS pliego_config (
     id CHAR(36) NOT NULL PRIMARY KEY,

@@ -74,6 +74,15 @@ export const TABLES: Record<string, TableDef> = {
     proveedor_id: "text", proveedor: "text", fecha_entrega: "date", fecha_pago: "date", banco: "text", numero: "text",
     moneda: "text", monto: "num", concepto: "text", estado: "text", import_key: "text",
   }),
+  cobro_clientes: T({ clave: "text", nombre: "text", tipo: "text", modalidad: "text", rut: "text", whatsapp: "text", notas: "text" }),
+  facturas: T({
+    emisor: "text", cliente_id: "text", cliente: "text", numero: "text", fecha: "date", oc: "text", moneda: "text",
+    importe: "num", cobrada: "bool", fecha_cobro: "date", detalle: "text", import_key: "text",
+  }),
+  cobros: T({
+    emisor: "text", cliente_id: "text", cliente: "text", fecha: "date", moneda: "text", importe: "num",
+    medio: "text", detalle: "text", import_key: "text",
+  }),
 };
 
 interface Relation {
@@ -96,6 +105,9 @@ const RELATIONS: Record<string, Record<string, Relation>> = {
   proveedores: { depositos: many("depositos", "proveedor_id"), cheques: many("cheques", "proveedor_id") },
   depositos: { proveedores: one("proveedores", "proveedor_id") },
   cheques: { proveedores: one("proveedores", "proveedor_id") },
+  cobro_clientes: { facturas: many("facturas", "cliente_id"), cobros: many("cobros", "cliente_id") },
+  facturas: { cobro_clientes: one("cobro_clientes", "cliente_id") },
+  cobros: { cobro_clientes: one("cobro_clientes", "cliente_id") },
 };
 
 // ---------- Selección de columnas: "*, llamados(*), presupuestos!fk(id, items)" ----------

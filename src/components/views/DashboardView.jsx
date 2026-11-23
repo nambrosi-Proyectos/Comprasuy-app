@@ -3,9 +3,11 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle, Wallet, Calculator } from 'lucide-react';
+import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle, Wallet, Calculator, Coins } from 'lucide-react';
 import AlertasPagos from '@/components/pagos/AlertasPagos';
 import ResumenDepositosDialog from '@/components/pagos/ResumenDepositosDialog';
+import PorCobrar from '@/components/cobros/PorCobrar';
+import { facturasPendientes, resumenPendientes } from '@/lib/cobros';
 
 const StatCard = ({ icon: Icon, title, value, accent, loading }) => (
   <motion.div
@@ -49,6 +51,7 @@ const DashboardView = () => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [pagos, setPagos] = useState(null);
   const [resumen, setResumen] = useState(false);
+  const [porCobrar, setPorCobrar] = useState(null);
 
   useEffect(() => {
     // Alertas de pagos: solo cheques pendientes y depósitos sin pagar (pocas filas).
@@ -57,6 +60,16 @@ const DashboardView = () => {
       supabase.from('depositos').select('id, proveedor, fecha, monto, moneda, pagado').eq('pagado', false),
     ]).then(([c, d]) => {
       if (!c.error && !d.error) setPagos({ cheques: c.data || [], depositos: d.data || [] });
+    });
+    // Lo que falta cobrar: facturas del Estado sin cobrar y saldos de cuentas corrientes.
+    Promise.all([
+      supabase.from('cobro_clientes').select('id, modalidad'),
+      supabase.from('facturas').select('id, emisor, cliente_id, cliente, fecha, moneda, importe, cobrada, created_at'),
+      supabase.from('cobros').select('id, cliente_id, fecha, moneda, importe, created_at'),
+    ]).then(([cl, f, co]) => {
+      if (cl.error || f.error || co.error || !(f.data || []).length) return;
+      const pendientes = facturasPendientes(cl.data || [], f.data || [], co.data || []);
+      setPorCobrar({ pendientes, resumen: resumenPendientes(pendientes) });
     });
   }, []);
 
@@ -117,6 +130,16 @@ const DashboardView = () => {
       )}
       <ResumenDepositosDialog open={resumen} onClose={() => setResumen(false)} />
 
+      {porCobrar && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-ink">Cobros</h2>
+            <Link to="/app/cobros" className="text-sm font-semibold text-brand hover:underline">Ver cobros</Link>
+          </div>
+          <PorCobrar resumen={porCobrar.resumen} pendientes={porCobrar.pendientes} />
+        </div>
+      )}
+
       <h2 className="text-base font-bold text-ink mb-3">Accesos rápidos</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <NavButton to="/app/llamados" icon={FileText} label="Llamados" desc="Lo último publicado en Compras Estatales" />
@@ -125,6 +148,7 @@ const DashboardView = () => {
         <NavButton to="/app/presupuestos" icon={FileSignature} label="Presupuestos" desc="Presupuestos a clientes" />
         <NavButton to="/app/lista_precios" icon={List} label="Presupuestos Entregados" desc="Presupuestos generados para clientes" />
         <NavButton to="/app/pagos" icon={Wallet} label="Pagos" desc="Depósitos y cheques a proveedores" />
+        <NavButton to="/app/cobros" icon={Coins} label="Cobros" desc="Facturas al Estado y cuentas corrientes" />
         <NavButton to="/app/configuracion" icon={Settings} label="Configuración" desc="Empresa, usuarios, filtros y prompts" />
       </div>
     </div>
