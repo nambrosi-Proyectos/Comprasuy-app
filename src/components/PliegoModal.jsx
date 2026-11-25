@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileDown, Loader2, Package, ClipboardCheck, Copy } from 'lucide-react';
+import { X, FileDown, Loader2, Package, ClipboardCheck, Copy, Pencil, Save, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -8,6 +8,8 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { htmlToText } from 'html-to-text';
 import { supabase } from '@/lib/customSupabaseClient';
+import { Textarea } from '@/components/ui/textarea';
+import { CONDICIONES_PLIEGO, datosEmpresa } from '@/lib/empresa';
 
 const backdrop = {
   visible: { opacity: 1 },
@@ -28,15 +30,34 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
   const [isExporting, setIsExporting] = useState(false);
   const pliegoRef = useRef(null);
   // Datos de la empresa y firma (Configuración → Datos de la empresa).
-  const [empresa, setEmpresa] = useState(null);
+  const [config, setConfig] = useState(null);
+  const empresa = datosEmpresa(config);
+  // Condiciones y aclaraciones: se editan para este pliego y se pueden dejar como predeterminadas.
+  const [condiciones, setCondiciones] = useState(CONDICIONES_PLIEGO);
+  const [editando, setEditando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
+    setEditando(false);
     supabase.from('pliego_config').select('*').limit(1).maybeSingle().then(({ data, error }) => {
       if (error) console.warn('No se pudieron cargar los datos de la empresa:', error.message);
-      setEmpresa(data || {});
+      setConfig(data || {});
+      setCondiciones(data?.condiciones_pliego ?? CONDICIONES_PLIEGO);
     });
-  }, [isOpen]);
+  }, [isOpen, llamado?.id]);
+
+  const guardarPredeterminadas = async () => {
+    setGuardando(true);
+    const valores = { condiciones_pliego: condiciones };
+    const { data, error } = config?.id
+      ? await supabase.from('pliego_config').update(valores).eq('id', config.id).select().single()
+      : await supabase.from('pliego_config').insert(valores).select().single();
+    setGuardando(false);
+    if (error) return toast({ variant: 'destructive', title: 'No se pudieron guardar', description: error.message });
+    setConfig(data);
+    toast({ title: '✅ Condiciones guardadas', description: 'Se van a usar en los próximos pliegos.' });
+  };
 
   const handleCopyToWord = () => {
     if (!pliegoRef.current) return;
@@ -180,15 +201,38 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
           </div>
           
           <div className="p-6 overflow-y-auto flex-grow bg-white dark:bg-slate-900" id="pliego-content-wrapper">
+            <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-slate-800 dark:border-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Condiciones y aclaraciones de este pliego</p>
+                <Button variant="outline" size="sm" onClick={() => setEditando((v) => !v)}>
+                  <Pencil className="w-4 h-4 mr-2" /> {editando ? 'Listo' : 'Editar condiciones'}
+                </Button>
+              </div>
+              {editando && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-slate-500">Una condición por línea. La fecha de preparación se agrega sola al final.</p>
+                  <Textarea value={condiciones} onChange={(e) => setCondiciones(e.target.value)} rows={6} className="bg-white text-black" />
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={guardarPredeterminadas} disabled={guardando}>
+                      {guardando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                      Guardar como predeterminadas
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setCondiciones(config?.condiciones_pliego ?? CONDICIONES_PLIEGO)}>
+                      <RotateCcw className="w-4 h-4 mr-2" /> Deshacer cambios
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div ref={pliegoRef} className="p-8 bg-white text-black font-sans">
               <header className="flex justify-between items-start pb-8 mb-8 border-b-2 border-gray-200">
                 <div className="flex items-center">
                   <div>
-                    <h1 className="text-2xl font-bold text-orange-500">{empresa?.razon_social || 'Compras.uy'}</h1>
-                    <p>RUT: {empresa?.rut || '215276350015'}</p>
-                    <p>Email: {empresa?.email || 'Compras@comprasuy.com'}</p>
-                    {empresa?.telefono && <p>Tel.: {empresa.telefono}</p>}
-                    {empresa?.direccion && <p>{empresa.direccion}</p>}
+                    <h1 className="text-2xl font-bold text-orange-500">{empresa.razon_social}</h1>
+                    <p>RUT: {empresa.rut}</p>
+                    {empresa.direccion && <p>Dirección: {empresa.direccion}</p>}
+                    {empresa.telefono && <p>Tel.: {empresa.telefono}</p>}
+                    <p>Email: {empresa.email}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -255,9 +299,7 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
               <section>
                   <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center"><ClipboardCheck className="w-5 h-5 mr-2 text-orange-500"/>Condiciones y Aclaraciones</h2>
                   <div className="bg-gray-50 p-4 rounded-lg space-y-2 border border-gray-200">
-                      <p>Los precios cotizados es por todo concepto definido en el pliego.</p>
-                      <p>La presente oferta tiene el plazo de entrega definido en el pliego.</p>
-                      <p>El pago se realizará por siff segun pliego de condiciones.</p>
+                      {condiciones.split('\n').filter((l) => l.trim()).map((l, i) => <p key={i}>{l}</p>)}
                       <p>Fecha de preparación del documento: {formatDate(new Date())}.</p>
                   </div>
               </section>
@@ -268,7 +310,7 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
                   <div className="mt-6">
                     <img src={empresa.firma_imagen} alt="Firma" style={{ maxHeight: 110, maxWidth: 260, objectFit: 'contain' }} />
                     <div style={{ borderTop: '1px solid #9ca3af', width: 260, marginTop: 4, paddingTop: 4 }} className="text-gray-700">
-                      {empresa.razon_social || 'Compras.uy'}
+                      {empresa.razon_social}
                     </div>
                   </div>
                 )}

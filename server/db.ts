@@ -322,6 +322,8 @@ const ADDED_COLUMNS: { table: string; column: string; definition: string }[] = [
   { table: "pliego_config", column: "firma_imagen", definition: "MEDIUMTEXT NULL" },
   // A quién se le manda por WhatsApp el aviso de un depósito a pagar.
   { table: "pliego_config", column: "whatsapp_pagos", definition: "VARCHAR(50) NULL" },
+  // Condiciones y aclaraciones predeterminadas del pliego (una por línea).
+  { table: "pliego_config", column: "condiciones_pliego", definition: "TEXT NULL" },
 ];
 
 export async function initSchema(): Promise<void> {

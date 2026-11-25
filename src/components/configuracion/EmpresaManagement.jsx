@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Building2, Save, PenLine, Upload, Trash2 } from 'lucide-react';
+import { CONDICIONES_PLIEGO } from '@/lib/empresa';
 
 const FIELDS = [
   { name: 'razon_social', label: 'Razón social' },
@@ -79,7 +80,7 @@ const EmpresaManagement = () => {
 
   const handleSave = async () => {
     setSaving(true);
-    const values = { razon_social: config.razon_social, rut: config.rut, direccion: config.direccion, email: config.email, telefono: config.telefono, whatsapp_pagos: config.whatsapp_pagos || null, footer_texto: config.footer_texto, firma_imagen: config.firma_imagen || null };
+    const values = { razon_social: config.razon_social, rut: config.rut, direccion: config.direccion, email: config.email, telefono: config.telefono, whatsapp_pagos: config.whatsapp_pagos || null, footer_texto: config.footer_texto, firma_imagen: config.firma_imagen || null, condiciones_pliego: config.condiciones_pliego || null };
     const { data, error } = config.id
       ? await supabase.from('pliego_config').update(values).eq('id', config.id).select().single()
       : await supabase.from('pliego_config').insert(values).select().single();
@@ -108,6 +109,10 @@ const EmpresaManagement = () => {
           <div className="space-y-1">
             <Label htmlFor="emp-footer">Texto al pie del presupuesto</Label>
             <Textarea id="emp-footer" name="footer_texto" rows={3} value={config.footer_texto || ''} onChange={handleChange} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="emp-condiciones">Condiciones y aclaraciones del pliego (una por línea)</Label>
+            <Textarea id="emp-condiciones" name="condiciones_pliego" rows={4} value={config.condiciones_pliego ?? CONDICIONES_PLIEGO} onChange={handleChange} />
           </div>
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5"><PenLine className="h-4 w-4" /> Firma del pliego</Label>

@@ -58,7 +58,7 @@ export const TABLES: Record<string, TableDef> = {
     },
   },
   presupuestos_clientes: T({ cliente_id: "text", items: "json", subtotal: "num", iva: "num", total: "num", moneda: "text" }),
-  pliego_config: T({ razon_social: "text", rut: "text", direccion: "text", email: "text", telefono: "text", footer_texto: "text", firma_imagen: "text", whatsapp_pagos: "text" }),
+  pliego_config: T({ razon_social: "text", rut: "text", direccion: "text", email: "text", telefono: "text", footer_texto: "text", firma_imagen: "text", whatsapp_pagos: "text", condiciones_pliego: "text" }),
   palabras_clave_llamados: T({ palabra: "text" }),
   organismos_filter: T({ name: "text" }),
   ai_prompts: T({ slug: "text", name: "text", description: "text", prompt_text: "text" }),

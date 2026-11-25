@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { X, Copy, FileDown, Loader2, Printer } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { datosEmpresa } from '@/lib/empresa';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -16,6 +17,7 @@ export const BudgetPreviewModal = ({ isOpen, onClose, presupuesto, cliente, conf
   if (!isOpen || !presupuesto || !cliente) return null;
 
   const moneda = presupuesto.moneda || 'UYU';
+  const empresa = datosEmpresa(config);
 
   const handleCopy = () => {
     let textToCopy = `Presupuesto para: ${cliente.name}\n`;
@@ -98,9 +100,11 @@ export const BudgetPreviewModal = ({ isOpen, onClose, presupuesto, cliente, conf
                 <header className="flex justify-between items-start pb-6 border-b">
                     <div>
                         <img src="/logo-comprasuy.webp" alt="Comprasuy" width="200" height="50" className="w-[200px] h-[50px] object-contain object-left mb-3" />
-                        <h1 className="text-xl font-bold text-gray-800">{config?.razon_social || 'Mi Empresa'}</h1>
-                        <p className="text-sm text-gray-500">{config?.direccion || 'Dirección de la empresa'}</p>
-                        <p className="text-sm text-gray-500">{config?.email || 'email@empresa.com'} | {config?.telefono || 'Teléfono'}</p>
+                        <h1 className="text-xl font-bold text-gray-800">{empresa.razon_social}</h1>
+                        <p className="text-sm text-gray-600">RUT: {empresa.rut}</p>
+                        {empresa.direccion && <p className="text-sm text-gray-600">Dirección: {empresa.direccion}</p>}
+                        {empresa.telefono && <p className="text-sm text-gray-600">Tel.: {empresa.telefono}</p>}
+                        <p className="text-sm text-gray-600">Email: {empresa.email}</p>
                     </div>
                     <div className="text-right">
                         <h2 className="text-2xl font-semibold text-gray-700">PRESUPUESTO ({moneda})</h2>
