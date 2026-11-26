@@ -306,14 +306,13 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
 
               <footer className="mt-16 text-left text-gray-600 text-sm">
                 <p>Sin más, les agradecemos y quedamos a las órdenes!!,</p>
-                {empresa?.firma_imagen && (
-                  <div className="mt-6">
-                    <img src={empresa.firma_imagen} alt="Firma" style={{ maxHeight: 110, maxWidth: 260, objectFit: 'contain' }} />
-                    <div style={{ borderTop: '1px solid #9ca3af', width: 260, marginTop: 4, paddingTop: 4 }} className="text-gray-700">
-                      {empresa.razon_social}
-                    </div>
+                <div className={empresa.firma_imagen ? 'mt-6' : 'mt-16'}>
+                  {empresa.firma_imagen && <img src={empresa.firma_imagen} alt="Firma" style={{ maxHeight: 110, maxWidth: 260, objectFit: 'contain' }} />}
+                  <div style={{ borderTop: '1px solid #9ca3af', width: 260, marginTop: 4, paddingTop: 4 }} className="text-gray-700">
+                    <div className="font-semibold">Guillermo Rosendorff</div>
+                    <div>{empresa.razon_social}</div>
                   </div>
-                )}
+                </div>
               </footer>
             </div>
           </div>
