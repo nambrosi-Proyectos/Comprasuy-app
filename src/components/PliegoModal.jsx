@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileDown, Loader2, Package, ClipboardCheck, Copy, Pencil, Save, RotateCcw } from 'lucide-react';
+import { X, FileDown, Loader2, Package, ClipboardCheck, Copy, Pencil, Save, RotateCcw, ListPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { htmlToText } from 'html-to-text';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Textarea } from '@/components/ui/textarea';
 import { CONDICIONES_PLIEGO, datosEmpresa } from '@/lib/empresa';
+import ItemsPliego, { calcularItemExtra } from '@/components/pliego/ItemsPliego';
 
 const backdrop = {
   visible: { opacity: 1 },
@@ -36,6 +37,36 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
   const [condiciones, setCondiciones] = useState(CONDICIONES_PLIEGO);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  // Ítems agregados a mano (con o sin precio). Se guardan solos en el llamado.
+  const [extras, setExtras] = useState([]);
+  const [verExtras, setVerExtras] = useState(false);
+  const [estadoExtras, setEstadoExtras] = useState('');
+  const extrasCargados = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen || !llamado?.id) return;
+    extrasCargados.current = null;
+    setExtras([]);
+    setEstadoExtras('');
+    supabase.from('llamados').select('id, pliego_items').eq('id', llamado.id).maybeSingle().then(({ data, error }) => {
+      if (error) console.warn('No se pudieron cargar los ítems del pliego:', error.message);
+      const lista = Array.isArray(data?.pliego_items) ? data.pliego_items : [];
+      extrasCargados.current = llamado.id;
+      setExtras(lista);
+      setVerExtras(lista.length > 0);
+    });
+  }, [isOpen, llamado?.id]);
+
+  useEffect(() => {
+    if (!isOpen || extrasCargados.current !== llamado?.id) return undefined;
+    setEstadoExtras('Guardando…');
+    const t = setTimeout(async () => {
+      const { error } = await supabase.from('llamados').update({ pliego_items: extras }).eq('id', llamado.id);
+      setEstadoExtras(error ? 'No se pudo guardar' : 'Guardado');
+      if (error) toast({ variant: 'destructive', title: 'No se pudieron guardar los ítems del pliego', description: error.message });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [extras]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isOpen) return;
@@ -167,7 +198,8 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
     return { ...item, precioUnitarioSinIva, ivaUnitario, precioUnitarioConIva, totalItem };
   });
 
-  const totalPresupuesto = itemsCalculations.reduce((sum, item) => sum + item.totalItem, 0);
+  const extrasCalculados = extras.filter((it) => (it.nombre || '').trim() || it.imagen).map(calcularItemExtra);
+  const totalPresupuesto = [...itemsCalculations, ...extrasCalculados].reduce((sum, item) => sum + item.totalItem, 0);
 
   return (
     <AnimatePresence>
@@ -224,6 +256,18 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
                 </div>
               )}
             </div>
+            <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 p-4 dark:bg-slate-800 dark:border-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Ítems extra{extras.length ? ` (${extras.length})` : ''}
+                  {estadoExtras && <span className="ml-2 text-xs font-normal text-slate-500">{estadoExtras}</span>}
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setVerExtras((v) => !v)}>
+                  <ListPlus className="w-4 h-4 mr-2" /> {verExtras ? 'Listo' : 'Agregar ítems'}
+                </Button>
+              </div>
+              {verExtras && <div className="mt-3"><ItemsPliego items={extras} onChange={setExtras} /></div>}
+            </div>
             <div ref={pliegoRef} className="p-8 bg-white text-black font-sans">
               <header className="flex justify-between items-start pb-8 mb-8 border-b-2 border-gray-200">
                 <div className="flex items-center">
@@ -278,11 +322,29 @@ const PliegoModal = ({ isOpen, onClose, llamado }) => {
                                       <td className="p-3 border-b border-gray-200 text-right font-semibold">{formatCurrency(item.precioUnitarioConIva)}</td>
                                       <td className="p-3 border-b border-gray-200 text-right font-bold text-green-700">{formatCurrency(item.totalItem)}</td>
                                   </tr>
-                              )) : (
+                              )) : !extrasCalculados.length && (
                                   <tr>
                                       <td colSpan="6" className="text-center p-4 border-b border-gray-200 text-gray-500">No hay ítems presupuestados para este llamado.</td>
                                   </tr>
                               )}
+                              {extrasCalculados.map((item) => (
+                                  <tr key={item.id}>
+                                      <td className="p-3 border-b border-gray-200">
+                                        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                          {item.imagen && <img src={item.imagen} alt="" style={{ width: 90, height: 90, objectFit: 'contain', flexShrink: 0, border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff' }} />}
+                                          <span>
+                                            <span style={{ fontWeight: 600 }}>{item.nombre}</span>
+                                            {item.descripcion && <span style={{ display: 'block', fontSize: 13, color: '#4b5563', whiteSpace: 'pre-line', marginTop: 2 }}>{item.descripcion}</span>}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="p-3 border-b border-gray-200 text-center">{item.cantidad}</td>
+                                      <td className="p-3 border-b border-gray-200 text-right">{item.sinPrecio ? '' : formatCurrency(item.precioUnitarioSinIva)}</td>
+                                      <td className="p-3 border-b border-gray-200 text-right">{item.sinPrecio ? '' : formatCurrency(item.ivaUnitario)}</td>
+                                      <td className="p-3 border-b border-gray-200 text-right font-semibold">{item.sinPrecio ? '' : formatCurrency(item.precioUnitarioConIva)}</td>
+                                      <td className="p-3 border-b border-gray-200 text-right font-bold text-green-700">{item.sinPrecio ? '' : formatCurrency(item.totalItem)}</td>
+                                  </tr>
+                              ))}
                           </tbody>
                           <tfoot>
                               <tr className="bg-gray-100 font-bold">

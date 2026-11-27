@@ -284,6 +284,19 @@ const SCHEMA = [
     CONSTRAINT fk_cobros_cliente FOREIGN KEY (cliente_id) REFERENCES cobro_clientes(id) ON DELETE SET NULL
   ) ${TABLE_OPTIONS}`,
 
+  // ---------- Banco de ítems para los pliegos ----------
+  `CREATE TABLE IF NOT EXISTS items_banco (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    nombre VARCHAR(500) NOT NULL,
+    descripcion TEXT NULL,
+    imagen MEDIUMTEXT NULL,
+    precio DOUBLE NULL,
+    iva DOUBLE NULL,
+    unidad VARCHAR(50) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ${TABLE_OPTIONS}`,
+
   // ---------- Stock ----------
   // Productos del depósito propio y de lo que está guardado en depósitos de proveedores.
   `CREATE TABLE IF NOT EXISTS stock_productos (
@@ -386,6 +399,8 @@ const ADDED_COLUMNS: { table: string; column: string; definition: string }[] = [
   { table: "pliego_config", column: "whatsapp_pagos", definition: "VARCHAR(50) NULL" },
   // Condiciones y aclaraciones predeterminadas del pliego (una por línea).
   { table: "pliego_config", column: "condiciones_pliego", definition: "TEXT NULL" },
+  // Ítems agregados a mano en la preparación del pliego (con o sin precio).
+  { table: "llamados", column: "pliego_items", definition: "LONGTEXT NULL" },
 ];
 
 export async function initSchema(): Promise<void> {

@@ -33,7 +33,7 @@ export const TABLES: Record<string, TableDef> = {
       user_id: "text", titulo: "text", link: "text", organismo: "text", estado: "text",
       fecha_cierre_texto: "text", descripcion_completa: "text", fecha_publicacion: "datetime",
       fecha_modificacion: "datetime", items: "json", presentado: "bool", adjudicado: "bool",
-      adjudicado_items: "json", adjudicado_monto: "num", updated_at: "datetime",
+      adjudicado_items: "json", adjudicado_monto: "num", updated_at: "datetime", pliego_items: "json",
     },
     { owner: "user_id" },
   ),
@@ -83,6 +83,7 @@ export const TABLES: Record<string, TableDef> = {
     emisor: "text", cliente_id: "text", cliente: "text", fecha: "date", moneda: "text", importe: "num",
     medio: "text", detalle: "text", import_key: "text",
   }),
+  items_banco: T({ nombre: "text", descripcion: "text", imagen: "text", precio: "num", iva: "num", unidad: "text", updated_at: "datetime" }),
   stock_productos: T({
     clave: "text", nombre: "text", categoria: "text", unidad: "text", stock_minimo: "num", costo: "num",
     alias: "json", activo: "bool", notas: "text",

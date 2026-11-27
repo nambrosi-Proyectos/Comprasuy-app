@@ -24,7 +24,7 @@ const modal = {
 
 /** Imagen del ítem: se achica (máx. 600 px) y se guarda como JPEG dentro del presupuesto. */
 const MAX_IMAGEN = 600;
-const imagenADataUrl = (file) =>
+export const imagenADataUrl = (file) =>
   new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) return reject(new Error('El archivo no es una imagen.'));
     if (file.size > 10 * 1024 * 1024) return reject(new Error('La imagen supera los 10 MB.'));
