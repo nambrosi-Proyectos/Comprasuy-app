@@ -83,6 +83,20 @@ export const TABLES: Record<string, TableDef> = {
     emisor: "text", cliente_id: "text", cliente: "text", fecha: "date", moneda: "text", importe: "num",
     medio: "text", detalle: "text", import_key: "text",
   }),
+  stock_productos: T({
+    clave: "text", nombre: "text", categoria: "text", unidad: "text", stock_minimo: "num", costo: "num",
+    alias: "json", activo: "bool", notas: "text",
+  }),
+  stock_ubicaciones: T({
+    nombre: "text", tipo: "text", padre_id: "text", proveedor_id: "text", orden: "num", activo: "bool", notas: "text", import_key: "text",
+  }),
+  stock_movimientos: T({
+    fecha: "date", producto_id: "text", ubicacion_id: "text", tipo: "text", cantidad: "num", costo: "num",
+    grupo: "text", referencia: "text", nota: "text", import_key: "text",
+  }),
+  stock_cierres: T({
+    mes: "text", fecha: "date", items: "json", valor_dentro: "num", valor_afuera: "num", nota: "text", origen: "text",
+  }),
 };
 
 interface Relation {
@@ -108,6 +122,9 @@ const RELATIONS: Record<string, Record<string, Relation>> = {
   cobro_clientes: { facturas: many("facturas", "cliente_id"), cobros: many("cobros", "cliente_id") },
   facturas: { cobro_clientes: one("cobro_clientes", "cliente_id") },
   cobros: { cobro_clientes: one("cobro_clientes", "cliente_id") },
+  stock_productos: { stock_movimientos: many("stock_movimientos", "producto_id") },
+  stock_ubicaciones: { stock_movimientos: many("stock_movimientos", "ubicacion_id"), proveedores: one("proveedores", "proveedor_id") },
+  stock_movimientos: { stock_productos: one("stock_productos", "producto_id"), stock_ubicaciones: one("stock_ubicaciones", "ubicacion_id") },
 };
 
 // ---------- Selección de columnas: "*, llamados(*), presupuestos!fk(id, items)" ----------

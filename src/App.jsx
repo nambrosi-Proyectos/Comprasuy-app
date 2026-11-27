@@ -15,6 +15,7 @@ import AdjudicacionesView from '@/components/views/AdjudicacionesView';
 import ConfiguracionView from '@/components/views/ConfiguracionView';
 import PagosView from '@/components/views/PagosView';
 import CobrosView from '@/components/views/CobrosView';
+import StockView from '@/components/views/StockView';
 import { Loader2 } from 'lucide-react';
 
 const AppContent = () => {
@@ -53,6 +54,7 @@ const AppContent = () => {
           <Route path="/app/adjudicaciones" element={<AdjudicacionesView />} />
           <Route path="/app/pagos" element={<PagosView />} />
           <Route path="/app/cobros" element={<CobrosView />} />
+          <Route path="/app/stock" element={<StockView />} />
           <Route path="/app/configuracion" element={<ConfiguracionView />} />
         </Route>
       </Routes>

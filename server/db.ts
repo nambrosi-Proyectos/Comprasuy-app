@@ -284,6 +284,68 @@ const SCHEMA = [
     CONSTRAINT fk_cobros_cliente FOREIGN KEY (cliente_id) REFERENCES cobro_clientes(id) ON DELETE SET NULL
   ) ${TABLE_OPTIONS}`,
 
+  // ---------- Stock ----------
+  // Productos del depósito propio y de lo que está guardado en depósitos de proveedores.
+  `CREATE TABLE IF NOT EXISTS stock_productos (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    clave VARCHAR(191) NOT NULL UNIQUE,
+    nombre VARCHAR(255) NOT NULL,
+    categoria VARCHAR(60) NULL,
+    unidad VARCHAR(30) NULL,
+    stock_minimo DOUBLE NULL,
+    costo DOUBLE NULL,
+    alias LONGTEXT NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    notas TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ${TABLE_OPTIONS}`,
+  // Salas, góndolas (dentro de una sala), depósitos de proveedores y "sin ubicar".
+  `CREATE TABLE IF NOT EXISTS stock_ubicaciones (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    tipo VARCHAR(20) NOT NULL DEFAULT 'sala',
+    padre_id CHAR(36) NULL,
+    proveedor_id CHAR(36) NULL,
+    orden INT NOT NULL DEFAULT 0,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    notas TEXT NULL,
+    import_key VARCHAR(64) NULL UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_stock_ubic_padre FOREIGN KEY (padre_id) REFERENCES stock_ubicaciones(id) ON DELETE SET NULL,
+    CONSTRAINT fk_stock_ubic_prov FOREIGN KEY (proveedor_id) REFERENCES proveedores(id) ON DELETE SET NULL
+  ) ${TABLE_OPTIONS}`,
+  // Conteos (cantidad contada en un lugar), entradas, salidas y traslados.
+  `CREATE TABLE IF NOT EXISTS stock_movimientos (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    fecha DATE NOT NULL,
+    producto_id CHAR(36) NOT NULL,
+    ubicacion_id CHAR(36) NOT NULL,
+    tipo VARCHAR(20) NOT NULL,
+    cantidad DOUBLE NOT NULL DEFAULT 0,
+    costo DOUBLE NULL,
+    grupo VARCHAR(64) NULL,
+    referencia VARCHAR(255) NULL,
+    nota VARCHAR(500) NULL,
+    import_key VARCHAR(64) NULL UNIQUE,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    INDEX idx_stock_mov_fecha (fecha),
+    INDEX idx_stock_mov_prod (producto_id),
+    CONSTRAINT fk_stock_mov_prod FOREIGN KEY (producto_id) REFERENCES stock_productos(id) ON DELETE CASCADE,
+    CONSTRAINT fk_stock_mov_ubic FOREIGN KEY (ubicacion_id) REFERENCES stock_ubicaciones(id) ON DELETE CASCADE
+  ) ${TABLE_OPTIONS}`,
+  // Foto del stock al cierre de cada mes (histórico).
+  `CREATE TABLE IF NOT EXISTS stock_cierres (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    mes CHAR(7) NOT NULL UNIQUE,
+    fecha DATE NOT NULL,
+    items LONGTEXT NULL,
+    valor_dentro DOUBLE NOT NULL DEFAULT 0,
+    valor_afuera DOUBLE NOT NULL DEFAULT 0,
+    nota VARCHAR(500) NULL,
+    origen VARCHAR(20) NOT NULL DEFAULT 'sistema',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ${TABLE_OPTIONS}`,
+
   // ---------- Configuración ----------
   `CREATE TABLE IF NOT EXISTS pliego_config (
     id CHAR(36) NOT NULL PRIMARY KEY,

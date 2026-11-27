@@ -3,11 +3,13 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle, Wallet, Calculator, Coins } from 'lucide-react';
+import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, Package, CheckCircle, Wallet, Calculator, Coins, Warehouse, Truck, AlertTriangle } from 'lucide-react';
 import AlertasPagos from '@/components/pagos/AlertasPagos';
 import ResumenDepositosDialog from '@/components/pagos/ResumenDepositosDialog';
 import PorCobrar from '@/components/cobros/PorCobrar';
 import { facturasPendientes, resumenPendientes } from '@/lib/cobros';
+import { resumenStock, totalesStock } from '@/lib/stock';
+import { formatoMonto } from '@/lib/pagos';
 
 const StatCard = ({ icon: Icon, title, value, accent, loading }) => (
   <motion.div
@@ -52,6 +54,7 @@ const DashboardView = () => {
   const [pagos, setPagos] = useState(null);
   const [resumen, setResumen] = useState(false);
   const [porCobrar, setPorCobrar] = useState(null);
+  const [stock, setStock] = useState(null);
 
   useEffect(() => {
     // Alertas de pagos: solo cheques pendientes y depósitos sin pagar (pocas filas).
@@ -70,6 +73,15 @@ const DashboardView = () => {
       if (cl.error || f.error || co.error || !(f.data || []).length) return;
       const pendientes = facturasPendientes(cl.data || [], f.data || [], co.data || []);
       setPorCobrar({ pendientes, resumen: resumenPendientes(pendientes) });
+    });
+    // Stock: valor adentro y afuera, y productos bajo el mínimo.
+    Promise.all([
+      supabase.from('stock_productos').select('id, costo, stock_minimo, activo'),
+      supabase.from('stock_ubicaciones').select('id, tipo'),
+      supabase.from('stock_movimientos').select('producto_id, ubicacion_id, tipo, cantidad, fecha, created_at'),
+    ]).then(([p, u, m]) => {
+      if (p.error || u.error || m.error || !(p.data || []).length) return;
+      setStock(totalesStock(resumenStock(p.data, u.data || [], m.data || [])));
     });
   }, []);
 
@@ -140,6 +152,32 @@ const DashboardView = () => {
         </div>
       )}
 
+      {stock && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-ink">Stock</h2>
+            <Link to="/app/stock" className="text-sm font-semibold text-brand hover:underline">Ver stock</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Link to="/app/stock" className="rounded-xl border border-slate-200 bg-white p-4 hover:border-brand">
+              <span className="text-[13px] font-semibold flex items-center gap-1.5"><Warehouse className="h-4 w-4" /> Valor en el depósito</span>
+              <b className="block text-xl mt-1 tabular-nums">{formatoMonto(stock.valorDentro)}</b>
+              <p className="text-xs mt-1 text-slate-500">{stock.conStock} productos con stock</p>
+            </Link>
+            <Link to="/app/stock" className="rounded-xl border border-slate-200 bg-white p-4 hover:border-brand">
+              <span className="text-[13px] font-semibold flex items-center gap-1.5"><Truck className="h-4 w-4" /> Valor afuera</span>
+              <b className="block text-xl mt-1 tabular-nums">{formatoMonto(stock.valorAfuera)}</b>
+              <p className="text-xs mt-1 text-slate-500">En depósitos de proveedores</p>
+            </Link>
+            <Link to="/app/stock" className={`rounded-xl border p-4 hover:border-brand ${stock.bajoMinimo ? 'bg-red-50 border-red-200 text-red-900' : 'bg-green-50 border-green-200 text-green-900'}`}>
+              <span className="text-[13px] font-semibold flex items-center gap-1.5"><AlertTriangle className="h-4 w-4" /> Bajo el mínimo</span>
+              <b className="block text-xl mt-1 tabular-nums">{stock.bajoMinimo}</b>
+              <p className="text-xs mt-1 opacity-75">Productos para reponer</p>
+            </Link>
+          </div>
+        </div>
+      )}
+
       <h2 className="text-base font-bold text-ink mb-3">Accesos rápidos</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <NavButton to="/app/llamados" icon={FileText} label="Llamados" desc="Lo último publicado en Compras Estatales" />
@@ -149,6 +187,7 @@ const DashboardView = () => {
         <NavButton to="/app/lista_precios" icon={List} label="Presupuestos Entregados" desc="Presupuestos generados para clientes" />
         <NavButton to="/app/pagos" icon={Wallet} label="Pagos" desc="Depósitos y cheques a proveedores" />
         <NavButton to="/app/cobros" icon={Coins} label="Cobros" desc="Facturas al Estado y cuentas corrientes" />
+        <NavButton to="/app/stock" icon={Warehouse} label="Stock" desc="Depósito por sala y góndola, y stock en proveedores" />
         <NavButton to="/app/configuracion" icon={Settings} label="Configuración" desc="Empresa, usuarios, filtros y prompts" />
       </div>
     </div>
