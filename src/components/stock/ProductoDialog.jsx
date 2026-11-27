@@ -103,7 +103,7 @@ const ProductoDialog = ({ fila, ubicaciones, movimientos, cierres, onClose, onEd
                     <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${colorTipo[m.tipo] || ''}`}>{TIPOS_MOVIMIENTO[m.tipo] || m.tipo}</span></td>
                     <td className="px-3 py-2">
                       {nombreUbicacion(porId.get(m.ubicacion_id), porId)}
-                      {(m.referencia || m.nota) && <span className="block text-xs text-slate-500">{[m.referencia, m.nota].filter(Boolean).join(' · ')}</span>}
+                      {((m.referencia && m.referencia !== 'sale') || m.nota) && <span className="block text-xs text-slate-500">{[m.referencia !== 'sale' && m.referencia, m.nota].filter(Boolean).join(' · ')}</span>}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap font-semibold">
                       {m.tipo === 'conteo' ? `= ${formatoCantidad(m.cantidad)}` : `${m.cantidad > 0 ? '+' : ''}${formatoCantidad(m.cantidad)}`}

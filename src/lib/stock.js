@@ -123,9 +123,14 @@ export const saldosStock = (movimientos) => {
       s.ultimoConteo = m.fecha;
     } else s.cantidad += n;
     s.ultimoMov = m.fecha;
+    // Si se llevó todo a otro lugar, el producto deja de estar asignado acá.
+    s.seFue = m.tipo === 'traslado' && (n < 0 || m.referencia === 'sale') && Math.abs(s.cantidad) < 0.0005;
     saldos.set(k, s);
   }
-  for (const s of saldos.values()) s.cantidad = Math.round(s.cantidad * 1000) / 1000;
+  for (const s of saldos.values()) {
+    s.cantidad = Math.round(s.cantidad * 1000) / 1000;
+    s.asignado = !s.seFue;
+  }
   return saldos;
 };
 
@@ -139,7 +144,8 @@ export const resumenStock = (productos, ubicaciones, movimientos) => {
     const u = ubicPorId.get(s.ubicacion_id);
     if (!r || !u) continue;
     if (s.ultimoConteo && (!r.ultimoConteo || s.ultimoConteo > r.ultimoConteo)) r.ultimoConteo = s.ultimoConteo;
-    if (Math.abs(s.cantidad) < 0.0005) continue;
+    // Con 0 igual queda en la lista si el producto está asignado a ese lugar (salvo "Sin ubicar").
+    if (Math.abs(s.cantidad) < 0.0005 && (!s.asignado || u.tipo === 'sin_ubicar')) continue;
     r.lugares.push({ ubicacion: u, cantidad: s.cantidad, ultimoConteo: s.ultimoConteo });
     if (esAfuera(u)) r.afuera += s.cantidad;
     else r.dentro += s.cantidad;

@@ -83,7 +83,7 @@ const StockView = () => {
 
   const lugares = useMemo(() => ubicacionesOrdenadas(ubicaciones).map((u) => {
     const cont = [...contenidoUbicacion(u.id, movimientos).values()];
-    const conStock = cont.filter((s) => Math.abs(s.cantidad) > 0.0005);
+    const conStock = cont.filter((s) => Math.abs(s.cantidad) > 0.0005 || (u.tipo !== 'sin_ubicar' && s.asignado));
     const ultimo = cont.map((s) => s.ultimoConteo).filter(Boolean).sort().pop();
     return { ...u, productos: conStock.length, ultimoConteo: ultimo };
   }), [ubicaciones, movimientos]);
@@ -213,7 +213,10 @@ const StockView = () => {
     }
   };
 
-  const abrirMover = (producto, ubic) => setMoverForm({ inicial: { producto_id: producto?.id || '', origen_id: ubic?.id || '' } });
+  // Si el producto no está en ningún lugar, se parte de "Sin ubicar" (con 0, queda asignado al destino).
+  const abrirMover = (producto, ubic) => setMoverForm({
+    inicial: { producto_id: producto?.id || '', origen_id: ubic?.id || (producto ? ubicaciones.find((u) => u.tipo === 'sin_ubicar')?.id || '' : '') },
+  });
   const abrirMov = (tipo, producto) => setMovForm({ inicial: { tipo, producto_id: producto?.id || '', costo: producto?.costo ?? '' } });
 
   const ubicRelevando = relevando && ubicaciones.find((u) => u.id === relevando);

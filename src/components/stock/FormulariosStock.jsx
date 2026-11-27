@@ -260,13 +260,17 @@ export const MoverForm = ({ open, inicial, productos, ubicaciones, movimientos, 
     if (!form.producto_id || !form.origen_id) return null;
     return contenidoUbicacion(form.origen_id, movimientos).get(form.producto_id)?.cantidad ?? 0;
   }, [form.producto_id, form.origen_id, movimientos]);
-  const [saving, enviar] = useEnvio(onSave, () => ({ ...form, cantidad: aNumero(form.cantidad) }));
+  // Por defecto se mueve todo lo que hay en el origen (aunque sea 0).
+  useEffect(() => {
+    if (disponible != null) setForm((f) => ({ ...f, cantidad: String(Math.max(0, disponible)) }));
+  }, [disponible]);
+  const [saving, enviar] = useEnvio(onSave, () => ({ ...form, cantidad: aNumero(form.cantidad) || 0 }));
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Mover {producto ? producto.nombre : 'producto'}</DialogTitle>
-          <DialogDescription>Pasa mercadería de un lugar a otro. El total no cambia.</DialogDescription>
+          <DialogDescription>Pasa mercadería de un lugar a otro. El total no cambia. Con 0, el producto queda asignado al lugar de destino.</DialogDescription>
         </DialogHeader>
         <form onSubmit={enviar} className="grid grid-cols-2 gap-3">
           {!producto && (
@@ -282,10 +286,14 @@ export const MoverForm = ({ open, inicial, productos, ubicaciones, movimientos, 
           </Campo>
           <Campo label="Cantidad">
             <div className="flex gap-2">
-              <Input inputMode="decimal" value={form.cantidad} onChange={set('cantidad')} required />
-              {disponible > 0 && <Button type="button" variant="outline" onClick={() => setForm((f) => ({ ...f, cantidad: String(disponible) }))}>Todo</Button>}
+              <Input inputMode="decimal" value={form.cantidad} onChange={set('cantidad')} placeholder="0" />
+              {disponible != null && <Button type="button" variant="outline" onClick={() => setForm((f) => ({ ...f, cantidad: String(Math.max(0, disponible)) }))}>Todo</Button>}
             </div>
-            {disponible != null && <p className="text-xs text-slate-500">Hay {formatoCantidad(disponible)} en el origen.</p>}
+            {disponible != null && (
+              <p className="text-xs text-slate-500">
+                {disponible > 0 ? `Hay ${formatoCantidad(disponible)} en el origen.` : 'No hay stock en el origen: se asigna el producto al destino con 0.'}
+              </p>
+            )}
           </Campo>
           <Campo label="Fecha"><Input type="date" value={form.fecha} onChange={set('fecha')} required /></Campo>
           <Campo label="Nota" className="col-span-2"><Input value={form.nota} onChange={set('nota')} /></Campo>

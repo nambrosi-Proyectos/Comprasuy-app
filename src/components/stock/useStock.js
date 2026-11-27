@@ -80,17 +80,29 @@ export const guardarConteo = async ({ ubicacion, lineas, fecha = hoyISO(), movim
   return comprobar(await supabase.from('stock_movimientos').insert(filas).select());
 };
 
-/** Traslado de un lugar a otro: sale de uno y entra al otro, con el mismo grupo. */
-export const moverStock = async ({ producto_id, origen_id, destino_id, cantidad, fecha = hoyISO(), nota }) => {
+/**
+ * Filas de un traslado: sale de un lugar y entra al otro, con el mismo grupo.
+ * Con cantidad 0 solo se asigna el producto al destino (sin cambiar el stock).
+ */
+const filasTraslado = ({ producto_id, origen_id, destino_id, cantidad, fecha, nota, grupo }) => {
   const n = Number(cantidad) || 0;
-  if (n <= 0) throw new Error('La cantidad tiene que ser mayor que cero.');
+  if (n < 0) throw new Error('La cantidad no puede ser negativa.');
   if (origen_id === destino_id) throw new Error('El destino tiene que ser otro lugar.');
-  const grupo = grupoNuevo();
-  const base = { fecha, producto_id, tipo: 'traslado', grupo, nota: nota?.trim() || null };
-  return comprobar(await supabase.from('stock_movimientos').insert([
-    { ...base, ubicacion_id: origen_id, cantidad: -n },
-    { ...base, ubicacion_id: destino_id, cantidad: n },
-  ]).select());
+  const base = { fecha, producto_id, tipo: 'traslado', grupo, nota: nota?.trim() || (n ? null : 'Asignado a otro lugar') };
+  // La fila del origen lleva referencia "sale": así se sabe que el producto dejó ese lugar aunque la cantidad sea 0.
+  const filas = [{ ...base, ubicacion_id: destino_id, cantidad: n }];
+  if (origen_id) filas.unshift({ ...base, ubicacion_id: origen_id, cantidad: -n, referencia: 'sale' });
+  return filas;
+};
+
+export const moverStock = async ({ fecha = hoyISO(), ...datos }) =>
+  comprobar(await supabase.from('stock_movimientos').insert(filasTraslado({ ...datos, fecha, grupo: grupoNuevo() })).select());
+
+/** Mueve varios productos juntos (todo lo que hay de cada uno, aunque sea 0) de un lugar a otro. */
+export const moverVarios = async ({ items, origen_id, destino_id, fecha = hoyISO() }) => {
+  const filas = items.flatMap((it) => filasTraslado({ producto_id: it.producto_id, cantidad: Math.max(0, it.cantidad), origen_id, destino_id, fecha, grupo: grupoNuevo() }));
+  if (!filas.length) return [];
+  return comprobar(await supabase.from('stock_movimientos').insert(filas).select());
 };
 
 /** Entrada (compra), salida (entrega) o ajuste. Una entrada con costo actualiza el costo del producto. */
