@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Building2, User } from 'lucide-react';
+import { AlertTriangle, Building2, ShoppingCart, User } from 'lucide-react';
 import { textoTotales } from '@/lib/pagos';
 
 const Tarjeta = ({ icon: Icon, titulo, valor, detalle, tono, onClick }) => (
@@ -16,14 +16,18 @@ const Tarjeta = ({ icon: Icon, titulo, valor, detalle, tono, onClick }) => (
 
 const cuantas = (n) => `${n} ${n === 1 ? 'factura' : 'facturas'}`;
 
-/** Lo que falta cobrar por cuenta (Comprasuy SAS / Nicolás Ambrosi) y lo vencido hace más de 90 días. */
+/** Lo que falta cobrar por cuenta (Comprasuy SAS / Nicolás Ambrosi / ventas de SVC) y lo vencido hace más de 90 días. */
 const PorCobrar = ({ resumen, pendientes, onIr }) => {
   const de = (emisor) => pendientes.filter((p) => p.emisor === emisor).length;
   const vencidas = pendientes.filter((p) => p.dias > 90).length;
+  const ventasSvc = de('svc');
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${ventasSvc ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
       <Tarjeta icon={Building2} titulo="Por cobrar · Comprasuy SAS" valor={textoTotales(resumen.porEmisor.comprasuy || {})} detalle={cuantas(de('comprasuy'))} tono="bg-white border-slate-200 text-ink" onClick={onIr && (() => onIr('comprasuy'))} />
       <Tarjeta icon={User} titulo="Por cobrar · Nicolás Ambrosi" valor={textoTotales(resumen.porEmisor.nicolas || {})} detalle={cuantas(de('nicolas'))} tono="bg-white border-slate-200 text-ink" onClick={onIr && (() => onIr('nicolas'))} />
+      {ventasSvc > 0 && (
+        <Tarjeta icon={ShoppingCart} titulo="Por cobrar · Ventas SVC" valor={textoTotales(resumen.porEmisor.svc || {})} detalle={`${ventasSvc} ${ventasSvc === 1 ? 'venta' : 'ventas'}`} tono="bg-white border-slate-200 text-ink" onClick={onIr && (() => onIr('svc'))} />
+      )}
       <Tarjeta icon={AlertTriangle} titulo="Hace más de 90 días" valor={textoTotales(resumen.vencido90)} detalle={cuantas(vencidas)} tono={vencidas ? 'bg-red-50 border-red-200 text-red-900' : 'bg-green-50 border-green-200 text-green-900'} onClick={onIr && (() => onIr('vencidas'))} />
     </div>
   );

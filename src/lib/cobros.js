@@ -121,10 +121,10 @@ export const mensajeEstadoCuenta = (cliente, cuenta) => {
     '',
   ];
   if (cuenta.pendientes.length) {
-    lineas.push('*Facturas pendientes:*');
+    lineas.push(cuenta.titulo || '*Facturas pendientes:*');
     for (const f of cuenta.pendientes) {
       const parcial = Math.abs(f.pendiente - Number(f.importe)) > 0.5 ? ` (resta ${formatoMonto(f.pendiente, f.moneda)})` : '';
-      lineas.push(`• ${fechaCorta(f.fecha)} – Factura ${f.numero || 's/n'}: ${formatoMonto(f.importe, f.moneda)}${parcial}`);
+      lineas.push(`• ${fechaCorta(f.fecha)} – ${f.etiqueta || `Factura ${f.numero || 's/n'}`}: ${formatoMonto(f.importe, f.moneda)}${parcial}`);
     }
     lineas.push('');
   }
@@ -141,7 +141,7 @@ export const mensajeEstadoCuenta = (cliente, cuenta) => {
 };
 
 /** Facturado y cobrado por mes (últimos `meses`), por emisor, en pesos. */
-export const resumenMensual = (facturas, cobros, meses = 12, hoy = hoyISO()) => {
+export const resumenMensual = (facturas, cobros, meses = 12, hoy = hoyISO(), ventasSvc = []) => {
   const claves = [];
   const [y, m] = hoy.split('-').map(Number);
   for (let i = meses - 1; i >= 0; i--) {
@@ -161,6 +161,13 @@ export const resumenMensual = (facturas, cobros, meses = 12, hoy = hoyISO()) => 
     if ((c.moneda || 'UYU') !== 'UYU') continue;
     const fila = filas.get(String(c.fecha || '').slice(0, 7));
     if (fila) sumar(fila.cobrado, c.emisor, Number(c.importe) || 0);
+  }
+  // Ventas de SVC: vendido en el mes de la venta, cobrado en el mes en que se cobró.
+  for (const v of ventasSvc) {
+    const fila = filas.get(String(v.fecha || '').slice(0, 7));
+    if (fila) sumar(fila.facturado, 'svc', v.total);
+    const filaCobro = v.pagadaEl && filas.get(v.pagadaEl.slice(0, 7));
+    if (filaCobro) sumar(filaCobro.cobrado, 'svc', v.total);
   }
   return [...filas.values()];
 };
@@ -482,3 +489,29 @@ export function leerPlanillaCobros(XLSX, wb, hoy = hoyISO()) {
     hojas,
   };
 }
+
+// ---------- Ventas de SVC (fase 4 de la unificación) ----------
+
+/** Cuentas que se muestran en los resúmenes: las dos que facturan y las ventas de SVC. */
+export const CUENTAS = { ...EMISORES, svc: 'Ventas SVC' };
+export const MEDIOS_COBRO_SVC = ['Efectivo', 'Transferencia', 'Cheque', 'Débito', 'Crédito', 'Depósito', 'Otro'];
+
+/** Ventas de SVC pendientes de cobro, con la misma forma que las facturas pendientes. */
+export const ventasSvcPendientes = (ventas, hoy = hoyISO()) =>
+  ventas
+    .filter((v) => v.estado === 'pendiente')
+    .map((v) => ({
+      id: `svc-${v.id}`, origen: 'svc', venta: v, emisor: 'svc', cliente: v.cliente, cliente_id: null,
+      fecha: v.fecha, numero: v.numero != null ? String(v.numero) : '', moneda: 'UYU',
+      importe: v.total, pendiente: v.total, dias: diasEntre(v.fecha, hoy),
+    }));
+
+/** Texto para WhatsApp con las ventas de SVC que un cliente tiene pendientes. */
+export const mensajeVentasSvc = (cliente, ventas) => {
+  const pendientes = ventas
+    .filter((v) => v.estado === 'pendiente')
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .map((v) => ({ fecha: v.fecha, importe: v.total, pendiente: v.total, moneda: 'UYU', etiqueta: `Compra N° ${v.numero ?? 's/n'}` }));
+  const total = pendientes.reduce((a, v) => a + v.importe, 0);
+  return mensajeEstadoCuenta({ nombre: cliente }, { pendientes, saldos: { UYU: total }, ultimoCobro: null, titulo: '*Compras pendientes de pago:*' });
+};

@@ -84,5 +84,11 @@ Al arrancar, si SVC ya fue migrado y tiene productos sin unir:
 - El detalle (qué se unió y qué se creó) se ve en `/ventas/api/unificacion` (administrador).
 - Conviene, antes de migrar SVC, tener importada la planilla de stock en Stock, así los productos se unen con los de la planilla.
 
-## Lo que sigue
-- Fase 4: lo que falta cobrar de las ventas de SVC pasa a Cobros.
+## Fase 4: ventas de SVC en Cobros
+
+- Las ventas de SVC **pendientes de pago** aparecen en **Cobros**: tarjeta "Por cobrar · Ventas SVC", pestaña **Ventas SVC**,
+  antigüedad, clientes que más deben, resumen mensual (vendido y cobrado por mes) y en el Panel.
+- No se copian: la venta de SVC sigue siendo la única. **Marcar cobrada** (fecha y medio) la pasa a "pagada" en SVC con esa fecha,
+  que es la que usan las comisiones. Un administrador puede volverla a pendiente si se cobró por error desde Cobros.
+- Por cliente, el botón de WhatsApp arma el estado de cuenta con sus compras pendientes (con el teléfono de la ficha de SVC).
+- Oficina y administradores lo ven; los vendedores no entran a Cobros. Las ventas de la lista REMAR solo las ve el administrador.

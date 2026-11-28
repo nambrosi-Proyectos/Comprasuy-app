@@ -7,7 +7,8 @@ import { Loader2, FileText, Star, Award, FileSignature, List, Settings, Users, P
 import AlertasPagos from '@/components/pagos/AlertasPagos';
 import ResumenDepositosDialog from '@/components/pagos/ResumenDepositosDialog';
 import PorCobrar from '@/components/cobros/PorCobrar';
-import { facturasPendientes, resumenPendientes } from '@/lib/cobros';
+import { facturasPendientes, resumenPendientes, ventasSvcPendientes } from '@/lib/cobros';
+import { traerVentasSvc } from '@/components/cobros/useCobros';
 import { resumenStock, totalesStock } from '@/lib/stock';
 import { formatoMonto } from '@/lib/pagos';
 
@@ -69,9 +70,11 @@ const DashboardView = () => {
       supabase.from('cobro_clientes').select('id, modalidad'),
       supabase.from('facturas').select('id, emisor, cliente_id, cliente, fecha, moneda, importe, cobrada, created_at'),
       supabase.from('cobros').select('id, cliente_id, fecha, moneda, importe, created_at'),
-    ]).then(([cl, f, co]) => {
-      if (cl.error || f.error || co.error || !(f.data || []).length) return;
-      const pendientes = facturasPendientes(cl.data || [], f.data || [], co.data || []);
+      traerVentasSvc().catch(() => []),
+    ]).then(([cl, f, co, svc]) => {
+      if (cl.error || f.error || co.error) return;
+      const pendientes = [...facturasPendientes(cl.data || [], f.data || [], co.data || []), ...ventasSvcPendientes(svc)];
+      if (!pendientes.length && !(f.data || []).length) return;
       setPorCobrar({ pendientes, resumen: resumenPendientes(pendientes) });
     });
     // Stock: valor adentro y afuera, y productos bajo el mínimo.

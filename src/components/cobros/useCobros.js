@@ -7,12 +7,14 @@ export const useCobros = () => {
   const [clientes, setClientes] = useState([]);
   const [facturas, setFacturas] = useState([]);
   const [cobros, setCobros] = useState([]);
+  const [ventasSvc, setVentasSvc] = useState([]); // ventas de SVC (pendientes y de los últimos meses)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const recargar = useCallback(async () => {
     setLoading(true);
     setError(null);
+    traerVentasSvc().then(setVentasSvc).catch(() => setVentasSvc([]));
     const [c, f, p] = await Promise.all([
       supabase.from('cobro_clientes').select('*').order('nombre', { ascending: true }),
       supabase.from('facturas').select('*').order('fecha', { ascending: false }),
@@ -30,7 +32,7 @@ export const useCobros = () => {
 
   useEffect(() => { recargar(); }, [recargar]);
 
-  return { clientes, facturas, cobros, setClientes, setFacturas, setCobros, loading, error, recargar };
+  return { clientes, facturas, cobros, ventasSvc, setClientes, setFacturas, setCobros, setVentasSvc, loading, error, recargar };
 };
 
 /** Busca el cliente por nombre (sin importar mayúsculas ni tildes) o lo crea. */
@@ -48,3 +50,20 @@ export const asegurarCliente = async (nombre, datos = {}) => {
   if (errIns) throw errIns;
   return data;
 };
+
+// ---------- Ventas de SVC por cobrar (fase 4) ----------
+const pedir = async (url, body) => {
+  const r = await fetch(url, {
+    method: body ? 'POST' : 'GET', credentials: 'same-origin',
+    headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data?.error?.message || data?.error || `Error ${r.status}`);
+  return data;
+};
+
+export const traerVentasSvc = async () => (await pedir('/api/svc-ventas')).ventas || [];
+/** Marca cobrada una venta pendiente de SVC (cambia su estado en SVC). */
+export const cobrarVentaSvc = async (id, datos) => (await pedir(`/api/svc-ventas/${encodeURIComponent(id)}/cobrar`, datos)).venta;
+/** Vuelve a pendiente una venta cobrada desde Cobros (solo administradores). */
+export const deshacerCobroSvc = async (id) => (await pedir(`/api/svc-ventas/${encodeURIComponent(id)}/pendiente`, {})).venta;

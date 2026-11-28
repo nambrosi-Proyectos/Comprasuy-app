@@ -6,6 +6,7 @@ import { ensureInitialAdmin } from "./server/auth";
 import { authRouter, adminRouter } from "./server/routes";
 import { restRouter } from "./server/rest";
 import { functionsRouter } from "./server/functions";
+import { svcVentasRouter } from "./server/svcVentas";
 import { seedPrompts } from "./server/prompts";
 import { aiProvider } from "./server/ai";
 
@@ -49,6 +50,7 @@ async function startServer() {
   app.use("/api/admin", adminRouter());
   app.use("/api/db", restRouter());
   app.use("/api/functions", functionsRouter());
+  app.use("/api/svc-ventas", svcVentasRouter());
   app.use("/api", (_req, res) => res.status(404).json({ error: { message: "Ruta de API inexistente." } }));
 
   if (process.env.NODE_ENV !== "production") {

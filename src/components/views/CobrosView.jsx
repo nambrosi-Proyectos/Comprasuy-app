@@ -8,12 +8,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Plus, Upload, Search, Pencil, Trash2, Landmark, BookOpen, BarChart3, Wallet, CheckCircle2 } from 'lucide-react';
+import { Loader2, Plus, Upload, Search, Pencil, Trash2, Landmark, BookOpen, BarChart3, Wallet, CheckCircle2, ShoppingCart } from 'lucide-react';
 import { fechaCorta, formatoMonto, hoyISO, textoTotales } from '@/lib/pagos';
 import {
   EMISORES, TRAMOS, NOMBRE_MES, claveCliente, cuentaCorriente, diasEntre, facturasPendientes,
-  resumenMensual, resumenPendientes, porMoneda,
+  resumenMensual, resumenPendientes, porMoneda, CUENTAS, ventasSvcPendientes,
 } from '@/lib/cobros';
+import VentasSvc from '@/components/cobros/VentasSvc';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useCobros, asegurarCliente } from '@/components/cobros/useCobros';
 import { importarPlanillaCobros } from '@/components/cobros/importarCobros';
 import { FacturaForm, CobroForm, ClienteCobroForm, MarcarCobradaDialog } from '@/components/cobros/FormulariosCobros';
@@ -25,6 +27,7 @@ const PAGINA = 60;
 const TABS = [
   { id: 'estado', label: 'Estado', icon: Landmark },
   { id: 'cuentas', label: 'Cuentas corrientes', icon: BookOpen },
+  { id: 'svc', label: 'Ventas SVC', icon: ShoppingCart },
   { id: 'resumen', label: 'Resumen', icon: BarChart3 },
 ];
 
@@ -54,7 +57,9 @@ const colorDias = (d) => (d > 90 ? 'bg-red-100 text-red-800' : d > 60 ? 'bg-ambe
 
 const CobrosView = () => {
   const { toast } = useToast();
-  const { clientes, facturas, cobros, setClientes, setFacturas, setCobros, loading, error, recargar } = useCobros();
+  const { clientes, facturas, cobros, ventasSvc, setClientes, setFacturas, setCobros, setVentasSvc, loading, error, recargar } = useCobros();
+  const { user } = useAuth();
+  const [busquedaSvc, setBusquedaSvc] = useState('');
   const [tab, setTab] = useState('estado');
   const [q, setQ] = useState('');
   const [filtro, setFiltro] = useState({ emisor: 'todos', estado: 'pendientes', anio: 'todos' });
@@ -70,7 +75,8 @@ const CobrosView = () => {
   const porId = useMemo(() => new Map(clientes.map((c) => [c.id, c])), [clientes]);
   const esCuenta = (x) => porId.get(x.cliente_id)?.modalidad === 'cuenta';
 
-  const pendientes = useMemo(() => facturasPendientes(clientes, facturas, cobros), [clientes, facturas, cobros]);
+  // Lo que falta cobrar: facturas, cuentas corrientes y ventas de SVC pendientes de pago.
+  const pendientes = useMemo(() => [...facturasPendientes(clientes, facturas, cobros), ...ventasSvcPendientes(ventasSvc)], [clientes, facturas, cobros, ventasSvc]);
   const resumen = useMemo(() => resumenPendientes(pendientes), [pendientes]);
 
   // ---------- Estado ----------
@@ -209,6 +215,7 @@ const CobrosView = () => {
   };
 
   const irA = (destino) => {
+    if (destino === 'svc') { setBusquedaSvc(''); setTab('svc'); return; }
     setTab('estado');
     setVisibles(PAGINA);
     if (destino === 'vencidas') setFiltro((f) => ({ ...f, emisor: 'todos', estado: 'vencidas', anio: 'todos' }));
@@ -221,7 +228,7 @@ const CobrosView = () => {
   };
 
   // ---------- Resumen ----------
-  const mensual = useMemo(() => resumenMensual(facturas, cobros), [facturas, cobros]);
+  const mensual = useMemo(() => resumenMensual(facturas, cobros, 12, hoyISO(), ventasSvc), [facturas, cobros, ventasSvc]);
   const deudores = useMemo(() => {
     const m = new Map();
     for (const p of pendientes) {
@@ -415,6 +422,10 @@ const CobrosView = () => {
                 </>
               )}
 
+              {tab === 'svc' && (
+                <VentasSvc key={busquedaSvc} ventas={ventasSvc} setVentas={setVentasSvc} esAdmin={user?.role === 'admin'} busquedaInicial={busquedaSvc} />
+              )}
+
               {tab === 'resumen' && (
                 <div className="space-y-6">
                   <section>
@@ -429,7 +440,7 @@ const CobrosView = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {Object.entries(EMISORES).map(([id, nombre]) => (
+                          {Object.entries(CUENTAS).map(([id, nombre]) => (
                             <tr key={id} className="border-t border-slate-100">
                               <td className="px-3 py-2 font-semibold">{nombre}</td>
                               {TRAMOS.map((t) => (
@@ -464,6 +475,8 @@ const CobrosView = () => {
                                 <td className="px-3 py-2 font-semibold">
                                   {porId.get(d.id)?.modalidad === 'cuenta'
                                     ? <button type="button" className="hover:text-brand" onClick={() => setCuentaId(d.id)}>{d.cliente}</button>
+                                    : d.filas.every((f) => f.origen === 'svc')
+                                    ? <button type="button" className="hover:text-brand" onClick={() => { setBusquedaSvc(d.cliente); setTab('svc'); }}>{d.cliente}</button>
                                     : <button type="button" className="hover:text-brand" onClick={() => { setTab('estado'); setQ(d.cliente); setFiltro((f) => ({ ...f, emisor: 'todos', estado: 'pendientes', anio: 'todos' })); }}>{d.cliente}</button>}
                                 </td>
                                 <td className="px-3 py-2 text-right">{d.filas.length}</td>
@@ -484,10 +497,10 @@ const CobrosView = () => {
                         <thead className="bg-slate-50 text-slate-500">
                           <tr>
                             <th className="px-3 py-2 text-left" rowSpan={2}>Mes</th>
-                            {Object.values(EMISORES).map((n) => <th key={n} className="px-3 pt-2 text-center" colSpan={2}>{n}</th>)}
+                            {Object.values(CUENTAS).map((n) => <th key={n} className="px-3 pt-2 text-center" colSpan={2}>{n}</th>)}
                           </tr>
                           <tr>
-                            {Object.keys(EMISORES).map((id) => (
+                            {Object.keys(CUENTAS).map((id) => (
                               <React.Fragment key={id}>
                                 <th className="px-3 pb-2 text-right font-medium">Facturado</th>
                                 <th className="px-3 pb-2 text-right font-medium">Cobrado</th>
@@ -499,7 +512,7 @@ const CobrosView = () => {
                           {mensual.slice().reverse().map((m) => (
                             <tr key={m.mes} className="border-t border-slate-100">
                               <td className="px-3 py-2 font-semibold">{NOMBRE_MES(m.mes)}</td>
-                              {Object.keys(EMISORES).map((id) => (
+                              {Object.keys(CUENTAS).map((id) => (
                                 <React.Fragment key={id}>
                                   <td className="px-3 py-2 text-right tabular-nums">{m.facturado[id] ? formatoMonto(m.facturado[id]) : '—'}</td>
                                   <td className="px-3 py-2 text-right tabular-nums text-green-700">{m.cobrado[id] ? formatoMonto(m.cobrado[id]) : '—'}</td>
