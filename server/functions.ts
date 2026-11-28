@@ -5,7 +5,7 @@
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { XMLParser } from "fast-xml-parser";
-import { type AuthedRequest, type User, loadSession, requireUser } from "./auth";
+import { type AuthedRequest, type User, loadSession, requireOficina } from "./auth";
 import { HttpError, wrap, apiErrorHandler } from "./http";
 import { generateText, extractJson, aiProvider, AiError } from "./ai";
 import { renderPrompt } from "./prompts";
@@ -335,7 +335,7 @@ async function saveJob(id: string, job: Job) {
 
 export function functionsRouter() {
   const router = express.Router();
-  router.use(loadSession, requireUser);
+  router.use(loadSession, requireOficina);
 
   router.post("/:name", wrap(async (req: AuthedRequest, res) => {
     const fn = Object.hasOwn(FUNCTIONS, req.params.name) ? FUNCTIONS[req.params.name] : undefined;

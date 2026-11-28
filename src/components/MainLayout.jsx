@@ -1,8 +1,9 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, FileText, Star, List, FileSignature, Award, Settings, History, LogOut, Wallet, Coins, Warehouse } from 'lucide-react';
+import { LayoutDashboard, FileText, Star, List, FileSignature, Award, Settings, History, LogOut, Wallet, Coins, Warehouse, ShoppingCart } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { ROLE_LABELS, URL_VENTAS } from '@/lib/roles';
 
 // Mismo esquema que SVC (svc.comprasuy.com): menú lateral oscuro con el logo,
 // ítem activo en naranja y el usuario abajo. En pantallas angostas pasa a barra superior.
@@ -61,6 +62,13 @@ const MainLayout = () => {
           </NavLink>
         ))}
 
+        {user?.role === 'admin' && (
+          <a href={URL_VENTAS} className={navClass({ isActive: false })}>
+            <ShoppingCart className="w-[18px] h-[18px] shrink-0" />
+            <span>Ventas (SVC)</span>
+          </a>
+        )}
+
         <div className="flex-1 max-[860px]:hidden" />
         <p className="text-xs text-slate-400 px-3 py-2 max-[860px]:hidden">Datos de comprasestatales.gub.uy</p>
 
@@ -68,7 +76,7 @@ const MainLayout = () => {
           <div className="border-t border-slate-800 px-3 pt-3 pb-1 text-[13px] text-slate-300 shrink-0 max-[860px]:border-0 max-[860px]:p-0 max-[860px]:pl-1">
             <b className="block text-white text-sm truncate max-[860px]:hidden">{user.name || user.email}</b>
             <span className="inline-block mt-1 mb-2 rounded-full bg-slate-800 px-2 py-0.5 text-[11.5px] font-bold text-brand max-[860px]:hidden">
-              {user.role === 'admin' ? 'Administrador' : 'Usuario'}
+              {ROLE_LABELS[user.role] || user.role}
             </span>
             <button
               onClick={signOut}

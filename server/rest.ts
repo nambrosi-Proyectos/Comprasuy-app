@@ -5,7 +5,7 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import type { RowDataPacket } from "mysql2/promise";
 import { getPool, withTransaction, type Executor, type Row } from "./db";
-import { type AuthedRequest, type User, loadSession, requireUser } from "./auth";
+import { type AuthedRequest, type User, loadSession, requireOficina } from "./auth";
 import { HttpError, wrap, apiErrorHandler } from "./http";
 
 type ColType = "text" | "num" | "bool" | "json" | "datetime" | "date";
@@ -584,7 +584,7 @@ const RPC: Record<string, (user: User, args: Record<string, unknown>) => Promise
 
 export function restRouter() {
   const router = express.Router();
-  router.use(loadSession, requireUser);
+  router.use(loadSession, requireOficina);
 
   router.post("/query", wrap(async (req, res) => {
     const result = await runQuery(req.body ?? {}, req.user!);

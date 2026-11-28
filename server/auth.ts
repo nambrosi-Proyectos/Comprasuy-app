@@ -9,7 +9,9 @@ const scrypt = promisify(scryptCb) as (password: string, salt: Buffer, keylen: n
 const SESSION_COOKIE = "comprasuy_session";
 const SESSION_DAYS = 14;
 
-export const ROLES = ["admin", "usuario"] as const;
+// admin y usuario: oficina (Estado, Pagos, Cobros, Stock). El resto son roles de ventas (SVC, en /ventas).
+export const ROLES = ["admin", "usuario", "supervisor", "vendedor", "logistica", "chofer"] as const;
+export const ROLES_OFICINA: readonly string[] = ["admin", "usuario"];
 export type Role = (typeof ROLES)[number];
 
 export interface User {
@@ -50,7 +52,7 @@ export const normalizeEmail = (email: unknown) => (typeof email === "string" ? e
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export const isValidEmail = (email: string) => EMAIL_RE.test(email);
 
-const PUBLIC_FIELDS = "id, email, name, role, created_at";
+const PUBLIC_FIELDS = "id, email, name, role, active, created_at";
 
 // ---------- Usuarios ----------
 
@@ -92,9 +94,9 @@ export async function countAdmins(): Promise<number> {
 
 /** Devuelve el usuario si email y contraseña son correctos. */
 export async function checkCredentials(email: string, password: string): Promise<User | null> {
-  const [rows] = await getPool().query<RowDataPacket[]>("SELECT id, password_hash FROM users WHERE email = ?", [email]);
-  const account = rows[0] as { id: string; password_hash: string } | undefined;
-  if (!account) {
+  const [rows] = await getPool().query<RowDataPacket[]>("SELECT id, password_hash, active FROM users WHERE email = ?", [email]);
+  const account = rows[0] as { id: string; password_hash: string; active: number } | undefined;
+  if (!account || account.active === 0) {
     await hashPassword(password); // tiempo de respuesta similar exista o no la cuenta
     return null;
   }
@@ -150,7 +152,7 @@ export async function loadSession(req: AuthedRequest, _res: Response, next: Next
       );
       if (rows.length) {
         const user = await getUser(rows[0].user_id);
-        if (user) req.user = user;
+        if (user && (user as { active?: number }).active !== 0) req.user = user;
       }
     }
     next();
@@ -162,6 +164,13 @@ export async function loadSession(req: AuthedRequest, _res: Response, next: Next
 /** Corta la petición si no hay sesión. */
 export function requireUser(req: AuthedRequest, res: Response, next: NextFunction) {
   if (!req.user) return res.status(401).json({ error: "Iniciá sesión para continuar." });
+  next();
+}
+
+/** Solo personal de oficina (admin y usuario): los roles de ventas trabajan en /ventas. */
+export function requireOficina(req: AuthedRequest, res: Response, next: NextFunction) {
+  if (!req.user) return res.status(401).json({ error: "Iniciá sesión para continuar." });
+  if (!ROLES_OFICINA.includes(req.user.role)) return res.status(403).json({ error: "Tu usuario es de ventas: entrá por /ventas/app/." });
   next();
 }
 

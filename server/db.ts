@@ -284,6 +284,16 @@ const SCHEMA = [
     CONSTRAINT fk_cobros_cliente FOREIGN KEY (cliente_id) REFERENCES cobro_clientes(id) ON DELETE SET NULL
   ) ${TABLE_OPTIONS}`,
 
+  // ---------- SVC (ventas, terreno, logística): documentos JSON por colección ----------
+  `CREATE TABLE IF NOT EXISTS svc_docs (
+    collection VARCHAR(32) NOT NULL,
+    id VARCHAR(100) NOT NULL,
+    data LONGTEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (collection, id)
+  ) ${TABLE_OPTIONS}`,
+
   // ---------- Banco de ítems para los pliegos ----------
   `CREATE TABLE IF NOT EXISTS items_banco (
     id CHAR(36) NOT NULL PRIMARY KEY,
@@ -399,6 +409,9 @@ const ADDED_COLUMNS: { table: string; column: string; definition: string }[] = [
   { table: "pliego_config", column: "whatsapp_pagos", definition: "VARCHAR(50) NULL" },
   // Condiciones y aclaraciones predeterminadas del pliego (una por línea).
   { table: "pliego_config", column: "condiciones_pliego", definition: "TEXT NULL" },
+  // Usuarios: activo/inactivo y datos de ventas de SVC (supervisor, zona, comisiones).
+  { table: "users", column: "active", definition: "TINYINT(1) NOT NULL DEFAULT 1" },
+  { table: "users", column: "svc", definition: "LONGTEXT NULL" },
   // Ítems agregados a mano en la preparación del pliego (con o sin precio).
   { table: "llamados", column: "pliego_items", definition: "LONGTEXT NULL" },
 ];

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soporte · SVC Comprasuy</title>
+<link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../"><img src="../assets/logo.svg" alt=""> SVC <small>Comprasuy</small></a>
+  <nav class="nav"><a href="../privacidad/">Privacidad</a><a class="btn btn-primary" href="../app/">Entrar al sistema</a></nav>
+</div></header>
+<main class="doc">
+  <span class="eyebrow">Ayuda</span>
+  <h1>Soporte</h1>
+  <p>¿Necesitás una mano? Escribinos a <a id="mail" href="#"></a> o por WhatsApp al <b id="wa"></b>. Respondemos de lunes a viernes de 9 a 18 h.</p>
+
+  <h2>Primeros pasos</h2>
+  <ol>
+    <li>Entrá al sistema y, si querés probar, cargá los <b>datos de ejemplo</b> desde el Panel.</li>
+    <li>En <b>Configuración</b> poné el nombre, RUT y dirección de tu empresa: salen en los comprobantes.</li>
+    <li>Cargá tus <b>Productos</b> y <b>Clientes</b>.</li>
+    <li>Usá <b>Nueva venta</b> para cobrar. El stock se descuenta solo.</li>
+  </ol>
+
+  <h2>Preguntas comunes</h2>
+  <p><b>No puedo entrar.</b> Pedile a un administrador que revise tu usuario en Configuración → Usuarios (que esté activo) y, si hace falta, que te ponga una contraseña nueva. Después de varios intentos fallidos hay que esperar 15 minutos.</p>
+  <p><b>Anulé una venta por error.</b> Una venta anulada devuelve el stock. Para recuperarla, registrala de nuevo desde Nueva venta.</p>
+  <p><b>¿Cómo paso los datos a Excel?</b> En Productos, Clientes y Ventas tenés el botón “Exportar CSV”.</p>
+  <p><b>Usuarios:</b> los administradores crean usuarios en Configuración. Un <b>vendedor</b> registra ventas y clientes y solo ve sus ventas; un <b>administrador</b> ve todo, maneja productos y stock, anula ventas y descarga respaldos.</p>
+</main>
+<footer><div class="wrap"><span>© Comprasuy · SVC</span><nav><a href="../">Inicio</a><a href="../privacidad/">Privacidad</a></nav></div></footer>
+<script src="../assets/config.js"></script>
+<script>
+  var m = document.getElementById('mail'); m.textContent = SVC_CONFIG.email; m.href = 'mailto:' + SVC_CONFIG.email;
+  document.getElementById('wa').textContent = SVC_CONFIG.whatsapp;
+</script>
+</body>
+</html>

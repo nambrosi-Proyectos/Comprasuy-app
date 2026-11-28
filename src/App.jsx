@@ -17,6 +17,7 @@ import PagosView from '@/components/views/PagosView';
 import CobrosView from '@/components/views/CobrosView';
 import StockView from '@/components/views/StockView';
 import { Loader2 } from 'lucide-react';
+import { esOficina, URL_VENTAS } from '@/lib/roles';
 
 const AppContent = () => {
   const { user, loading, passwordRecovery } = useAuth();
@@ -31,6 +32,16 @@ const AppContent = () => {
 
   if (!user || passwordRecovery || window.location.pathname === '/reset-password' || window.location.hash.includes('type=recovery')) {
     return <LoginView />;
+  }
+
+  // Vendedores, supervisores, logística y choferes trabajan en ventas (SVC).
+  if (!esOficina(user.role)) {
+    window.location.replace(URL_VENTAS);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-ink p-4">
+        <Loader2 className="w-12 h-12 animate-spin text-brand" />
+      </div>
+    );
   }
 
   return (

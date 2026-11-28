@@ -14,7 +14,7 @@ import {
 import { Loader2, Users, UserPlus, KeyRound, Trash2, ShieldCheck } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 
-const ROLE_LABELS = { admin: 'Administrador', usuario: 'Usuario' };
+import { ROLE_LABELS } from '@/lib/roles';
 const emptyForm = { name: '', email: '', role: 'usuario', password: '' };
 
 const UsersManagement = () => {

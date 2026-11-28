@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, UserCircle } from 'lucide-react';
+import { ROLE_LABELS } from '@/lib/roles';
 
 /** Cambio de la contraseña propia. */
 const CuentaManagement = () => {
@@ -30,7 +31,7 @@ const CuentaManagement = () => {
   return (
     <div className="bg-white dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm h-full">
       <h2 className="text-2xl font-semibold mb-1 flex items-center"><UserCircle className="mr-2 h-6 w-6" /> Mi cuenta</h2>
-      <p className="text-sm text-slate-500 mb-4">{user?.name ? `${user.name} · ` : ''}{user?.email} · {user?.role === 'admin' ? 'Administrador' : 'Usuario'}</p>
+      <p className="text-sm text-slate-500 mb-4">{user?.name ? `${user.name} · ` : ''}{user?.email} · {ROLE_LABELS[user?.role] || user?.role}</p>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="space-y-1">
           <Label htmlFor="acc-pass">Nueva contraseña (mínimo 8 caracteres)</Label>

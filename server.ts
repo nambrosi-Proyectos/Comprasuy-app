@@ -1,5 +1,6 @@
 import express from "express";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { initSchema } from "./server/db";
 import { ensureInitialAdmin } from "./server/auth";
 import { authRouter, adminRouter } from "./server/routes";
@@ -22,12 +23,26 @@ async function startServer() {
 
   app.set("trust proxy", 1); // Hostinger atiende detrás de un proxy HTTPS
   app.disable("x-powered-by");
+  // Dominio principal (gestion.comprasuy.com): los otros dominios de la misma app redirigen a él.
+  const PUBLIC_HOST = process.env.PUBLIC_HOST?.trim().toLowerCase();
+  if (PUBLIC_HOST) {
+    app.use((req, res, next) => {
+      const host = (req.hostname || "").toLowerCase();
+      if (!host || host === PUBLIC_HOST || host === "localhost" || host === "127.0.0.1" || req.path === "/api/health") return next();
+      res.redirect(301, `https://${PUBLIC_HOST}${req.originalUrl}`);
+    });
+  }
   app.use(express.json({ limit: "25mb" }));
 
   // Base de datos MySQL: crea las tablas, los prompts y el administrador inicial si hace falta.
   await initSchema();
   await seedPrompts();
   await ensureInitialAdmin();
+
+  // SVC (ventas, terreno y logística) en /ventas, con la misma base y la misma sesión.
+  // Es código CommonJS: se carga en tiempo de ejecución desde la carpeta svc/ del proyecto.
+  const montarSvc = createRequire(path.join(process.cwd(), "package.json"))("./svc/montar.js");
+  await montarSvc(app);
 
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.use("/api/auth", authRouter());
