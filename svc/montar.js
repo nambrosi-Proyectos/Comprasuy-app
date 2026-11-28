@@ -15,8 +15,14 @@ module.exports = async function montarSvc(app) {
   } catch (e) {
     console.error('No se pudo migrar SVC (se sigue sin migrar):', e.message);
   }
+  // Después, los productos de SVC se unen con el catálogo de Stock (una vez, con los datos reales).
+  try {
+    await require('./server/unificarProductos').unificarProductos();
+  } catch (e) {
+    console.error('No se pudieron unir los productos de SVC con Stock:', e.message);
+  }
   await require('./server/scope').migrateSupervisors();
-  await require('./server/seed').seedCatalog().catch((err) => console.error('No se pudo cargar el catálogo inicial de SVC:', err.message));
+  // El catálogo de ejemplo de SVC ya no se carga: los productos son los del módulo Stock y los de SVC migrados.
   setInterval(() => auth.cleanSessions().catch(() => {}), 6 * 3600e3).unref();
 
   app.use('/ventas/api', require('./server/api')());

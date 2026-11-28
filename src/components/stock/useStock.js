@@ -15,17 +15,19 @@ export const useStock = () => {
   const [ubicaciones, setUbicaciones] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
   const [cierres, setCierres] = useState([]);
+  const [precios, setPrecios] = useState([]); // precios de venta por lista (los que usa SVC)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const recargar = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [p, u, m, c] = await Promise.all([
+    const [p, u, m, c, pl] = await Promise.all([
       supabase.from('stock_productos').select('*').order('nombre', { ascending: true }),
       supabase.from('stock_ubicaciones').select('*').order('orden', { ascending: true }),
-      supabase.from('stock_movimientos').select('*').order('fecha', { ascending: true }),
+      supabase.from('stock_movimientos').select('*').order('fecha', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('stock_cierres').select('*').order('mes', { ascending: true }),
+      supabase.from('precios_lista').select('*'),
     ]);
     const err = p.error || u.error || m.error || c.error;
     if (err) setError(err.message);
@@ -34,13 +36,14 @@ export const useStock = () => {
       setUbicaciones(u.data || []);
       setMovimientos(m.data || []);
       setCierres(c.data || []);
+      setPrecios(pl.error ? [] : pl.data || []);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => { recargar(); }, [recargar]);
 
-  return { productos, ubicaciones, movimientos, cierres, setProductos, setUbicaciones, setMovimientos, setCierres, loading, error, recargar };
+  return { productos, ubicaciones, movimientos, cierres, precios, setProductos, setUbicaciones, setMovimientos, setCierres, setPrecios, loading, error, recargar };
 };
 
 const grupoNuevo = () => `g-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -122,6 +125,8 @@ export const registrarMovimiento = async ({ tipo, producto_id, ubicacion_id, can
 /** Une dos productos: los movimientos y el histórico del "origen" pasan al "destino" y el origen se borra. */
 export const unirProductos = async (origen, destino, cierres) => {
   comprobar(await supabase.from('stock_movimientos').update({ producto_id: destino.id }).eq('producto_id', origen.id));
+  // Sus precios de venta (SVC) pasan al producto que queda.
+  comprobar(await supabase.from('precios_lista').update({ producto_id: destino.id }).eq('producto_id', origen.id));
   for (const c of cierres) {
     const items = c.items || [];
     if (!items.some((it) => it.p === origen.id)) continue;
@@ -143,3 +148,16 @@ export const unirProductos = async (origen, destino, cierres) => {
   comprobar(await supabase.from('stock_productos').delete().eq('id', origen.id));
   return actualizado;
 };
+
+/** Precio de venta de un producto en una lista de SVC (comercio, institución o REMAR). Precio con IVA incluido. */
+export const guardarPrecio = async (valores, existente) => {
+  const fila = {
+    producto_id: valores.producto_id, lista: valores.lista, codigo: valores.codigo?.trim() || null,
+    precio: Number(String(valores.precio).replace(',', '.')) || 0, iva: Number(valores.iva) || 0, descripcion: valores.descripcion?.trim() || null,
+  };
+  if (existente) return comprobar(await supabase.from('precios_lista').update(fila).eq('id', existente.id).select().single());
+  const id = `p-${Date.now().toString(36)}${Math.random().toString(16).slice(2, 10)}`;
+  return comprobar(await supabase.from('precios_lista').insert({ id, ...fila }).select().single());
+};
+
+export const borrarPrecio = async (precio) => comprobar(await supabase.from('precios_lista').delete().eq('id', precio.id));

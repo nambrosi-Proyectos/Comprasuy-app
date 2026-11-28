@@ -1,8 +1,10 @@
 // Almacén de datos de SVC dentro del sistema unificado (gestion.comprasuy.com).
 // - Usa la misma base MySQL que el resto del sistema (variables DB_*).
 // - Los usuarios son los del sistema (tabla users): un solo usuario y una sola contraseña para todo.
+// - Los productos son los del catálogo único (stock_productos + precios_lista) y su stock es el del módulo Stock.
 // - El resto de SVC sigue guardándose como documentos JSON en la tabla svc_docs (fase 1 de la unificación).
 const mysql = require('mysql2/promise');
+const productos = require('./productos');
 
 let pool = null;
 function getPool() {
@@ -40,6 +42,7 @@ const api = (exec, lock) => {
   const forUpdate = lock ? ' FOR UPDATE' : '';
   return {
     async all(col) {
+      if (col === 'products') return productos.all(exec, lock);
       if (col === 'users') {
         const [rows] = await exec.query(`SELECT ${USER_COLS} FROM users ORDER BY created_at` + forUpdate);
         return rows.map(userFromRow);
@@ -48,6 +51,7 @@ const api = (exec, lock) => {
       return rows.map(r => JSON.parse(r.data));
     },
     async get(col, id) {
+      if (col === 'products') return productos.get(exec, lock, id);
       if (col === 'users') {
         const [rows] = await exec.query(`SELECT ${USER_COLS} FROM users WHERE id = ?` + forUpdate, [String(id)]);
         return rows.length ? userFromRow(rows[0]) : null;
@@ -56,6 +60,7 @@ const api = (exec, lock) => {
       return rows.length ? JSON.parse(rows[0].data) : null;
     },
     async put(col, doc) {
+      if (col === 'products') return productos.put(exec, doc);
       if (col === 'users') {
         await exec.query(
           `INSERT INTO users (id, email, name, role, password_hash, active, svc) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -70,10 +75,12 @@ const api = (exec, lock) => {
       return doc;
     },
     async del(col, id) {
+      if (col === 'products') return productos.del(exec, id);
       if (col === 'users') { await exec.query('DELETE FROM users WHERE id = ?', [String(id)]); return; }
       await exec.query('DELETE FROM svc_docs WHERE collection = ? AND id = ?', [col, String(id)]);
     },
     async clear(col) {
+      if (col === 'products') return productos.clear(exec);
       if (col === 'users') throw new Error('No se pueden borrar todos los usuarios.');
       await exec.query('DELETE FROM svc_docs WHERE collection = ?', [col]);
     }

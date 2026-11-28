@@ -18,6 +18,8 @@ interface TableDef {
   /** Columna con el dueño de la fila: cada usuario solo ve y modifica las suyas. */
   owner?: string;
   defaultOrder?: string;
+  /** Filas que solo ve y toca un administrador (por ejemplo, la lista REMAR). */
+  soloAdmin?: { column: string; value: string };
 }
 
 const T = (columns: Record<string, ColType>, extra: Partial<TableDef> = {}): TableDef => ({
@@ -95,6 +97,10 @@ export const TABLES: Record<string, TableDef> = {
     fecha: "date", producto_id: "text", ubicacion_id: "text", tipo: "text", cantidad: "num", costo: "num",
     grupo: "text", referencia: "text", nota: "text", import_key: "text",
   }),
+  precios_lista: T(
+    { producto_id: "text", lista: "text", codigo: "text", precio: "num", iva: "num", descripcion: "text", imagen: "text", updated_at: "datetime" },
+    { soloAdmin: { column: "lista", value: "remar" } },
+  ),
   stock_cierres: T({
     mes: "text", fecha: "date", items: "json", valor_dentro: "num", valor_afuera: "num", nota: "text", origen: "text",
   }),
@@ -123,7 +129,8 @@ const RELATIONS: Record<string, Record<string, Relation>> = {
   cobro_clientes: { facturas: many("facturas", "cliente_id"), cobros: many("cobros", "cliente_id") },
   facturas: { cobro_clientes: one("cobro_clientes", "cliente_id") },
   cobros: { cobro_clientes: one("cobro_clientes", "cliente_id") },
-  stock_productos: { stock_movimientos: many("stock_movimientos", "producto_id") },
+  stock_productos: { stock_movimientos: many("stock_movimientos", "producto_id"), precios_lista: many("precios_lista", "producto_id") },
+  precios_lista: { stock_productos: one("stock_productos", "producto_id") },
   stock_ubicaciones: { stock_movimientos: many("stock_movimientos", "ubicacion_id"), proveedores: one("proveedores", "proveedor_id") },
   stock_movimientos: { stock_productos: one("stock_productos", "producto_id"), stock_ubicaciones: one("stock_ubicaciones", "ubicacion_id") },
 };
@@ -291,6 +298,10 @@ function buildWhere(def: TableDef, filters: Filter[], user: User, params: unknow
     parts.push(`\`${def.owner}\` = ?`);
     params.push(user.id);
   }
+  if (def.soloAdmin && user.role !== "admin") {
+    parts.push(`(\`${def.soloAdmin.column}\` IS NULL OR \`${def.soloAdmin.column}\` <> ?)`);
+    params.push(def.soloAdmin.value);
+  }
   return parts.length ? `WHERE ${parts.join(" AND ")}` : "";
 }
 
@@ -372,6 +383,9 @@ function prepareRow(def: TableDef, input: unknown, user: User): Row {
     row[key] = toDb(def.columns[key], value);
   }
   if (def.owner) row[def.owner] = user.id;
+  if (def.soloAdmin && user.role !== "admin" && row[def.soloAdmin.column] === def.soloAdmin.value) {
+    throw new HttpError(403, "Solo un administrador puede usar esa lista.");
+  }
   return row;
 }
 

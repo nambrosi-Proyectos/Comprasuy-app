@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { ArrowRightLeft, LogIn, LogOut, Pencil, Trash2 } from 'lucide-react';
 import { fechaCorta, formatoMonto } from '@/lib/pagos';
 import { TIPOS_MOVIMIENTO, formatoCantidad, nombreUbicacion, nombreMes } from '@/lib/stock';
+import PreciosVenta from '@/components/stock/PreciosVenta';
 
 const colorTipo = { conteo: 'bg-slate-100 text-slate-700', entrada: 'bg-green-100 text-green-800', salida: 'bg-red-100 text-red-800', traslado: 'bg-sky-100 text-sky-800', ajuste: 'bg-amber-100 text-amber-800' };
 
 /** Detalle de un producto: dónde está, cómo evolucionó mes a mes y sus últimos movimientos. */
-const ProductoDialog = ({ fila, ubicaciones, movimientos, cierres, onClose, onEditar, onMover, onMovimiento, onBorrarMov }) => {
+const ProductoDialog = ({ fila, ubicaciones, movimientos, cierres, onClose, onEditar, onMover, onMovimiento, onBorrarMov, precios = [], esAdmin, onGuardarPrecio, onBorrarPrecio }) => {
   const porId = useMemo(() => new Map(ubicaciones.map((u) => [u.id, u])), [ubicaciones]);
   const p = fila?.producto;
   const historia = useMemo(() => {
@@ -54,6 +55,8 @@ const ProductoDialog = ({ fila, ubicaciones, movimientos, cierres, onClose, onEd
           <Button variant="outline" size="sm" onClick={() => onMovimiento('salida', p)}><LogOut className="mr-2 h-4 w-4" /> Salida</Button>
           <Button variant="outline" size="sm" onClick={() => onMover(p, fila.lugares[0]?.ubicacion)}><ArrowRightLeft className="mr-2 h-4 w-4" /> Mover</Button>
         </div>
+
+        <PreciosVenta productoId={p.id} precios={precios} esAdmin={esAdmin} onGuardar={onGuardarPrecio} onBorrar={onBorrarPrecio} />
 
         <section>
           <h3 className="font-semibold text-ink mb-2">Dónde está</h3>

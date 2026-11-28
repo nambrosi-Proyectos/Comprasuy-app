@@ -34,6 +34,38 @@ export const claveProducto = (nombre) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+// Para comparar nombres: sin "de/del/x…", con unidades iguales (kilo = kg = k, litro = l, gramos = g) y sin importar el orden.
+const SOBRAN = new Set(['de', 'del', 'la', 'el', 'en', 'x', 'y', 'con', 'por', 'a', 'al']);
+export const claveComparable = (nombre) => {
+  const t = claveProducto(nombre)
+    .replace(/(\d)\s*(kilos?|kgs?|k)\b/g, '$1 kg').replace(/\b(kilos?|kgs?)\b/g, 'kg')
+    .replace(/(\d)\s*(litros?|lts?|l)\b/g, '$1 l').replace(/\blitros?\b/g, 'l')
+    .replace(/(\d)\s*(gramos?|grs?|g)\b/g, '$1 g')
+    .replace(/(\d)\s*(ml|cc)\b/g, '$1 ml');
+  return [...new Set(t.split(' ').filter((w) => w && !SOBRAN.has(w)))].sort().join(' ');
+};
+
+/** Pares de productos que parecen el mismo (para revisarlos y unirlos a mano). */
+export const posiblesDuplicados = (productos, max = 150) => {
+  const lista = productos.filter((p) => p.activo !== false).map((p) => {
+    const c = claveComparable(p.nombre);
+    return { p, c, tokens: new Set(c.split(' ')), nums: numeros(c) };
+  });
+  const pares = [];
+  for (let i = 0; i < lista.length; i++) {
+    for (let j = i + 1; j < lista.length; j++) {
+      const a = lista[i], b = lista[j];
+      if (a.nums !== b.nums) continue;
+      let comunes = 0;
+      for (const t of a.tokens) if (b.tokens.has(t)) comunes++;
+      const sim = comunes / Math.max(a.tokens.size, b.tokens.size);
+      const igual = a.c === b.c || parecidos(a.c, b.c);
+      if (igual || (sim >= 0.6 && comunes >= 2)) pares.push({ a: a.p, b: b.p, sim: igual ? 1 : sim });
+    }
+  }
+  return pares.sort((x, y) => y.sim - x.sim).slice(0, max);
+};
+
 const MINUSCULAS = new Set(['de', 'del', 'la', 'el', 'en', 'x', 'y', 'con', 'sin', 'para', 'a', 'al', 'por']);
 
 /** "PULPA DE TOMATE don perita" → "Pulpa de Tomate Don Perita". */

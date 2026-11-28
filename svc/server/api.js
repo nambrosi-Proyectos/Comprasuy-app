@@ -318,7 +318,10 @@ module.exports = function api() {
         const p = await s.get('products', String(it.productId)); if (!p) fail(400, 'Un producto ya no existe. Recargá la página.');
         if (listOf(p.list) !== list) fail(400, p.name + ' no es de la lista de ' + LIST_NAMES[list] + '. Recargá la página.');
         if (qty > p.stock) fail(409, 'Stock insuficiente de ' + p.name + ' (quedan ' + p.stock + ').');
-        p.stock -= qty; products.push(p);
+        p.stock -= qty;
+        // Sale del módulo Stock (de los lugares donde está el producto).
+        p._mov = { tipo: 'salida', cantidad: qty, referencia: 'Venta SVC N° ' + settings.nextNumber };
+        products.push(p);
         items.push({ productId: p.id, name: p.name, code: p.code, qty, price: p.price, iva: p.iva, cost: p.cost });
       }
       const sale = Object.assign({
@@ -358,7 +361,8 @@ module.exports = function api() {
       if (to === 'anulada') {
         for (const it of sale.items) {
           const p = await s.get('products', it.productId);
-          if (p) { p.stock += it.qty; await s.put('products', p); }
+          // Vuelve al módulo Stock, a los mismos lugares de donde salió.
+          if (p) { p.stock += it.qty; p._mov = { tipo: 'entrada', cantidad: it.qty, referencia: 'Anulación venta SVC N° ' + sale.number, revierte: 'Venta SVC N° ' + sale.number }; await s.put('products', p); }
         }
         sale.cancelledBy = req.user.name; sale.cancelledAt = new Date().toISOString();
       }
@@ -427,6 +431,12 @@ module.exports = function api() {
     for (const c of await store.all('clients')) if (c.sellerId === req.params.id) { c.sellerId = ''; await store.put('clients', c); } // quedan sin asignar
     for (const x of await store.all('recorridos')) if (x.sellerId === req.params.id) { x.sellerId = ''; await store.put('recorridos', x); }
     res.json({ ok: true });
+  }));
+
+  // ---------- unificación con el sistema de gestión (admin): qué se migró y qué productos se unieron ----------
+  r.get('/unificacion', needAdmin, wrap(async (req, res) => {
+    const [migracion, productos] = await Promise.all([store.get('meta', 'migracion-svc'), store.get('meta', 'productos-unificados')]);
+    res.json({ migracion, productos });
   }));
 
   // ---------- respaldo / importación (admin) ----------

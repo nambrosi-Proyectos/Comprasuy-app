@@ -10,17 +10,19 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Loader2, Plus, Upload, Search, Pencil, Package, Warehouse, BarChart3, ArrowRightLeft, LogIn, AlertTriangle,
-  Truck, ClipboardList, CalendarCheck,
+  Truck, ClipboardList, CalendarCheck, GitMerge,
 } from 'lucide-react';
 import { fechaCorta, formatoMonto, hoyISO } from '@/lib/pagos';
 import {
   resumenStock, totalesStock, itemsCierre, valorCierre, formatoCantidad, nombreMes, ubicacionesOrdenadas,
   contenidoUbicacion, claveProducto, CATEGORIAS,
 } from '@/lib/stock';
-import { useStock, guardarProducto, moverStock, registrarMovimiento, unirProductos } from '@/components/stock/useStock';
+import { useStock, guardarProducto, moverStock, registrarMovimiento, unirProductos, guardarPrecio, borrarPrecio } from '@/components/stock/useStock';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { importarPlanillaStock } from '@/components/stock/importarStock';
 import { ProductoForm, UbicacionForm, MovimientoForm, MoverForm, UnirDialog } from '@/components/stock/FormulariosStock';
 import ProductoDialog from '@/components/stock/ProductoDialog';
+import DuplicadosDialog from '@/components/stock/DuplicadosDialog';
 import Relevamiento from '@/components/stock/Relevamiento';
 
 const PAGINA = 80;
@@ -43,7 +45,8 @@ const Tarjeta = ({ icon: Icon, titulo, valor, detalle, tono = 'bg-white border-s
 
 const StockView = () => {
   const { toast } = useToast();
-  const { productos, ubicaciones, movimientos, cierres, setProductos, setUbicaciones, setMovimientos, setCierres, loading, error, recargar } = useStock();
+  const { productos, ubicaciones, movimientos, cierres, precios, setProductos, setUbicaciones, setMovimientos, setCierres, setPrecios, loading, error, recargar } = useStock();
+  const { user } = useAuth();
   const [tab, setTab] = useState('stock');
   const [q, setQ] = useState('');
   const [categoria, setCategoria] = useState('todas');
@@ -154,12 +157,13 @@ const StockView = () => {
     }
   };
 
-  const hacerUnion = async (origen, destino) => {
+  const [verDuplicados, setVerDuplicados] = useState(false);
+  const hacerUnion = async (origen, destino, abrir = true) => {
     try {
       const actualizado = await unirProductos(origen, destino, cierres);
       setUnir(null);
       setProductoForm(null);
-      setDetalleId(actualizado.id);
+      if (abrir) setDetalleId(actualizado.id);
       await recargar();
       toast({ title: 'Productos unidos', description: `"${origen.nombre}" ahora es parte de "${actualizado.nombre}".` });
     } catch (e) {
@@ -283,6 +287,7 @@ const StockView = () => {
               <option value="todos">Todos los productos</option>
               <option value="inactivos">Inactivos</option>
             </select>
+            <Button variant="outline" onClick={() => setVerDuplicados(true)}><GitMerge className="mr-2 h-4 w-4" /> Revisar repetidos</Button>
           </div>
           {!productos.length && (
             <p className="rounded-xl border border-dashed p-8 text-center text-slate-500">
@@ -451,9 +456,32 @@ const StockView = () => {
         onMover={abrirMover}
         onMovimiento={abrirMov}
         onBorrarMov={setABorrar}
+        precios={detalle ? precios.filter((x) => x.producto_id === detalle.producto.id) : []}
+        esAdmin={user?.role === 'admin'}
+        onGuardarPrecio={async (v, existente) => {
+          try {
+            const fila = await guardarPrecio(v, existente);
+            setPrecios((prev) => [...prev.filter((x) => x.id !== fila.id), fila]);
+            toast({ title: 'Precio guardado', description: 'Ya se usa en Ventas (SVC).' });
+            return true;
+          } catch (e) {
+            toast({ variant: 'destructive', title: 'No se pudo guardar el precio', description: e.message });
+            return false;
+          }
+        }}
+        onBorrarPrecio={async (x) => {
+          if (!window.confirm(`¿Sacar este producto de la lista ${x.lista}? En Ventas (SVC) deja de aparecer en esa lista; sus ventas viejas no cambian.`)) return;
+          try {
+            await borrarPrecio(x);
+            setPrecios((prev) => prev.filter((y) => y.id !== x.id));
+          } catch (e) {
+            toast({ variant: 'destructive', title: 'No se pudo borrar', description: e.message });
+          }
+        }}
       />
       <ProductoForm open={!!productoForm} inicial={productoForm?.inicial} onClose={() => setProductoForm(null)} onSave={guardarProd} onUnir={setUnir} />
       <UnirDialog origen={unir} productos={productos} onClose={() => setUnir(null)} onUnir={hacerUnion} />
+      <DuplicadosDialog open={verDuplicados} productos={productos} resumen={resumen} precios={precios} onClose={() => setVerDuplicados(false)} onUnir={(o, d) => hacerUnion(o, d, false)} />
       <UbicacionForm
         open={!!ubicForm}
         inicial={ubicForm?.inicial}

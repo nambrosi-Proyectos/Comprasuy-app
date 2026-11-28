@@ -356,6 +356,23 @@ const SCHEMA = [
     CONSTRAINT fk_stock_mov_prod FOREIGN KEY (producto_id) REFERENCES stock_productos(id) ON DELETE CASCADE,
     CONSTRAINT fk_stock_mov_ubic FOREIGN KEY (ubicacion_id) REFERENCES stock_ubicaciones(id) ON DELETE CASCADE
   ) ${TABLE_OPTIONS}`,
+  // Precios de venta por lista (comercio, institución, REMAR) de cada producto: lo que vende SVC.
+  // El id es el del producto en SVC (sus ventas lo guardan como productId).
+  `CREATE TABLE IF NOT EXISTS precios_lista (
+    id VARCHAR(100) NOT NULL PRIMARY KEY,
+    producto_id CHAR(36) NOT NULL,
+    lista VARCHAR(20) NOT NULL DEFAULT 'comercio',
+    codigo VARCHAR(60) NULL,
+    precio DOUBLE NOT NULL DEFAULT 0,
+    iva INT NOT NULL DEFAULT 22,
+    descripcion VARCHAR(300) NULL,
+    imagen VARCHAR(100) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_precios_lista_prod (producto_id),
+    INDEX idx_precios_lista_codigo (lista, codigo),
+    CONSTRAINT fk_precios_lista_prod FOREIGN KEY (producto_id) REFERENCES stock_productos(id) ON DELETE CASCADE
+  ) ${TABLE_OPTIONS}`,
   // Foto del stock al cierre de cada mes (histórico).
   `CREATE TABLE IF NOT EXISTS stock_cierres (
     id CHAR(36) NOT NULL PRIMARY KEY,
